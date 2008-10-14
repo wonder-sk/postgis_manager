@@ -1,5 +1,6 @@
 
 from ManagerDialog_ui import Ui_ManagerDialog
+from DlgCreateTable import DlgCreateTable
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -92,10 +93,11 @@ class TreeModel(QAbstractItemModel):
 		self.tree = tree
 		
 	def columnCount(self, parent):
-		if parent.isValid():
-			return parent.internalPointer().columnCount()
-		else:
-			return self.tree.columnCount()
+		#if parent.isValid():
+		#	return parent.internalPointer().columnCount()
+		#else:
+		#	return self.tree.columnCount()
+		return 2
 		
 	def data(self, index, role):
 		if not index.isValid():
@@ -104,7 +106,10 @@ class TreeModel(QAbstractItemModel):
 			return QVariant()
 		
 		item = index.internalPointer()
-		return QVariant(item.data(index.column()))
+		try:
+			return QVariant(item.data(index.column()))
+		except:
+			return QVariant()
 	
 	def flags(self, index):
 		if not index.isValid():
@@ -183,7 +188,35 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 			
 		self.treeModel = TreeModel(rootItem)
 		self.tree.setModel(self.treeModel)
+		
+		
+		self.connect(self.tree, SIGNAL("clicked(const QModelIndex&)"), self.itemActivated)
+		self.connect(self.btnCreateTable, SIGNAL("clicked()"), self.createTable)
+		self.connect(self.btnDeleteTable, SIGNAL("clicked()"), self.deleteTable)
+		
+	def itemActivated(self, index):
+		
+		item = index.internalPointer()
+		
+		if isinstance(item, SchemaItem):
+			html = "<h1>%s</h1> (schema)<p>tables: %d" % (item.itemData[0], item.childCount())
+		elif isinstance(item, TableItem):
+			table = item.itemData[0]
+			html = "<h1>%s</h1> (table)<p>geometry: %s" % (table, item.itemData[1])
+			html += "<table><tr><th>#<th>Name<th>Type"
+			for fld in self.db.get_table_fields(table):
+				html += "<tr><td>%s<td>%s<td>%s" % (fld.num, fld.name, fld.data_type)
+			html += "</table>"
+		else:
+			html = "---"
+		self.txtMetadata.setHtml(html)
 
+	def createTable(self):
+		dlg = DlgCreateTable()
+		dlg.exec_()
+		
+	def deleteTable(self):
+		print "fuuuj"
 
 
 app = QApplication(sys.argv)

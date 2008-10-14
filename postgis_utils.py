@@ -10,6 +10,11 @@ import psycopg2
 def connect_db(host, dbname, user, passwd):
 	return psycopg2.connect("host='%s' dbname='%s' user='%s' password='%s'" % (host, dbname, user, passwd))
 
+class TableAttribute:
+	def __init__(self, row):
+		self.num, self.name, self.data_type, self.char_max_len, self.modifier, self.notnull, self.hasdefault = row
+
+
 class GeoDB:
 	
 	def __init__(self, con):
@@ -70,7 +75,6 @@ class GeoDB:
 		c = self.con.cursor()
 		
 		# LEFT OUTER JOIN: zmena oproti LEFT JOIN ze ak moze spojit viackrat tak to urobi
-
 		sql = "SELECT relname, nspname, relkind, geometry_columns.f_geometry_column, geometry_columns.type FROM pg_class " \
 		      "  JOIN pg_namespace ON relnamespace=pg_namespace.oid " \
 		      "  LEFT OUTER JOIN geometry_columns ON relname=f_table_name AND nspname=f_table_schema " \
@@ -87,26 +91,32 @@ class GeoDB:
 			- row count
 			- indices (spatial + classical)
 			
-			how to get field info:
-			
-			SELECT a.attnum AS ordinal_position,
-				a.attname AS column_name,
-				t.typname AS data_type,
-				a.attlen AS character_maximum_length,
-				a.atttypmod AS modifier,
-				a.attnotnull AS notnull,
-				a.atthasdef AS hasdefault
-			FROM pg_class c, pg_attribute a, pg_type t
-			WHERE c.relname = 'test2' AND
-				a.attnum > 0 AND
-				a.attrelid = c.oid AND
-				a.atttypid = t.oid
-			ORDER BY a.attnum;
-			 
 			more (constraints, triggers, functions):
 			http://www.alberton.info/postgresql_meta_info.html
 		"""
 		pass
+		
+	def get_table_fields(self, table, schema='public'):
+		c = self.con.cursor()
+		sql = """SELECT a.attnum AS ordinal_position,
+				a.attname AS column_name,
+				t.typname AS data_type,
+				a.attlen AS char_max_len,
+				a.atttypmod AS modifier,
+				a.attnotnull AS notnull,
+				a.atthasdef AS hasdefault
+			FROM pg_class c, pg_attribute a, pg_type t
+			WHERE c.relname = '%s' AND
+				a.attnum > 0 AND
+				a.attrelid = c.oid AND
+				a.atttypid = t.oid
+			ORDER BY a.attnum""" % table
+
+		c.execute(sql)
+		attrs = []
+		for row in c.fetchall():
+			attrs.append(TableAttribute(row))
+		return attrs
 		
 	"""
 	def list_tables(self):
@@ -151,3 +161,8 @@ if __name__ == '__main__':
 	for row in db.list_geotables():
 		print row
 
+	print '=========='
+
+	for fld in db.get_table_metadata('trencin'):
+		print fld
+	

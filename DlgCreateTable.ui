@@ -1,70 +1,73 @@
 <ui version="4.0" >
- <class>ManagerDialog</class>
- <widget class="QDialog" name="ManagerDialog" >
+ <class>DlgCreateTable</class>
+ <widget class="QDialog" name="DlgCreateTable" >
   <property name="geometry" >
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>615</width>
-    <height>442</height>
+    <width>474</width>
+    <height>399</height>
    </rect>
   </property>
   <property name="windowTitle" >
-   <string>PostGIS Manager</string>
+   <string>Create Table</string>
   </property>
   <layout class="QGridLayout" >
-   <item row="0" column="0" >
-    <widget class="QLabel" name="label" >
-     <property name="text" >
-      <string>Tables:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1" >
-    <widget class="QLabel" name="label_2" >
-     <property name="text" >
-      <string>Metadata:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0" >
-    <widget class="QTreeView" name="tree" />
-   </item>
-   <item row="1" column="1" >
-    <widget class="QTextBrowser" name="txtMetadata" />
-   </item>
-   <item row="2" column="0" colspan="2" >
+   <item row="0" column="0" colspan="2" >
     <layout class="QHBoxLayout" >
      <item>
-      <widget class="QPushButton" name="btnCreateTable" >
+      <widget class="QLabel" name="label" >
        <property name="text" >
-        <string>Create Table</string>
+        <string>Name</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="btnDeleteTable" >
+      <widget class="QLineEdit" name="editName" />
+     </item>
+    </layout>
+   </item>
+   <item row="1" column="0" >
+    <widget class="QTreeWidget" name="fields" >
+     <column>
+      <property name="text" >
+       <string>1</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item row="1" column="1" >
+    <layout class="QVBoxLayout" >
+     <item>
+      <widget class="QPushButton" name="btnAddField" >
        <property name="text" >
-        <string>Delete Table</string>
+        <string>Add field</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnDeleteField" >
+       <property name="text" >
+        <string>Delete field</string>
        </property>
       </widget>
      </item>
      <item>
       <spacer>
        <property name="orientation" >
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Vertical</enum>
        </property>
        <property name="sizeHint" >
         <size>
-         <width>40</width>
-         <height>20</height>
+         <width>20</width>
+         <height>40</height>
         </size>
        </property>
       </spacer>
      </item>
     </layout>
    </item>
-   <item row="3" column="0" colspan="2" >
+   <item row="2" column="0" colspan="2" >
     <widget class="QDialogButtonBox" name="buttonBox" >
      <property name="orientation" >
       <enum>Qt::Horizontal</enum>
@@ -81,7 +84,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>ManagerDialog</receiver>
+   <receiver>DlgCreateTable</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel" >
@@ -97,7 +100,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>ManagerDialog</receiver>
+   <receiver>DlgCreateTable</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel" >
