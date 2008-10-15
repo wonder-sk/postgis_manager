@@ -69,6 +69,9 @@
         <property name="text" >
          <string>Create new table (-c)</string>
         </property>
+        <property name="checked" >
+         <bool>true</bool>
+        </property>
        </widget>
       </item>
       <item>
@@ -129,7 +132,7 @@
        </widget>
       </item>
       <item row="0" column="1" >
-       <widget class="QLineEdit" name="lineEdit_3" />
+       <widget class="QLineEdit" name="editSrid" />
       </item>
       <item row="1" column="0" >
        <widget class="QCheckBox" name="chkGeomColumn" >
@@ -139,7 +142,7 @@
        </widget>
       </item>
       <item row="1" column="1" >
-       <widget class="QLineEdit" name="lineEdit_4" />
+       <widget class="QLineEdit" name="editGeomColumn" />
       </item>
       <item row="2" column="0" >
        <widget class="QCheckBox" name="chkEncoding" >
@@ -149,7 +152,11 @@
        </widget>
       </item>
       <item row="2" column="1" >
-       <widget class="QComboBox" name="comboBox_3" />
+       <widget class="QComboBox" name="cboEncoding" >
+        <property name="editable" >
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
       <item row="3" column="0" colspan="2" >
        <widget class="QCheckBox" name="chkSpatialIndex" >
@@ -168,6 +175,16 @@
      </property>
      <layout class="QVBoxLayout" >
       <item>
+       <widget class="QRadioButton" name="radExec" >
+        <property name="text" >
+         <string>execute in current DB connection</string>
+        </property>
+        <property name="checked" >
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
        <layout class="QHBoxLayout" >
         <item>
          <widget class="QRadioButton" name="radSave" >
@@ -177,23 +194,16 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit_2" />
+         <widget class="QLineEdit" name="editOutputFile" />
         </item>
         <item>
-         <widget class="QPushButton" name="pushButton_2" >
+         <widget class="QPushButton" name="btnSelectOutputFile" >
           <property name="text" >
            <string>...</string>
           </property>
          </widget>
         </item>
        </layout>
-      </item>
-      <item>
-       <widget class="QRadioButton" name="radExec" >
-        <property name="text" >
-         <string>execute in current DB connection</string>
-        </property>
-       </widget>
       </item>
      </layout>
     </widget>
@@ -220,16 +230,16 @@
   <tabstop>radAppend</tabstop>
   <tabstop>radCreateOnly</tabstop>
   <tabstop>chkSrid</tabstop>
-  <tabstop>lineEdit_3</tabstop>
+  <tabstop>editSrid</tabstop>
   <tabstop>chkGeomColumn</tabstop>
-  <tabstop>lineEdit_4</tabstop>
+  <tabstop>editGeomColumn</tabstop>
   <tabstop>chkEncoding</tabstop>
-  <tabstop>comboBox_3</tabstop>
+  <tabstop>cboEncoding</tabstop>
   <tabstop>chkSpatialIndex</tabstop>
-  <tabstop>radSave</tabstop>
-  <tabstop>lineEdit_2</tabstop>
-  <tabstop>pushButton_2</tabstop>
   <tabstop>radExec</tabstop>
+  <tabstop>radSave</tabstop>
+  <tabstop>editOutputFile</tabstop>
+  <tabstop>btnSelectOutputFile</tabstop>
   <tabstop>buttonBox</tabstop>
  </tabstops>
  <resources/>

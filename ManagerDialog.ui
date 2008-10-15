@@ -56,11 +56,25 @@
        </property>
        <property name="sizeHint" >
         <size>
-         <width>40</width>
-         <height>20</height>
+         <width>121</width>
+         <height>26</height>
         </size>
        </property>
       </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnLoadData" >
+       <property name="text" >
+        <string>Load data</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnDumpData" >
+       <property name="text" >
+        <string>Dump data</string>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
@@ -76,6 +90,15 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>tree</tabstop>
+  <tabstop>txtMetadata</tabstop>
+  <tabstop>btnCreateTable</tabstop>
+  <tabstop>btnDeleteTable</tabstop>
+  <tabstop>btnLoadData</tabstop>
+  <tabstop>btnDumpData</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>
