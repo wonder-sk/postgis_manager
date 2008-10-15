@@ -11,9 +11,8 @@ import postgis_utils
 
 class TreeItem:
 	
-	def __init__(self, data, parent):
+	def __init__(self, parent):
 		self.parentItem = parent
-		self.itemData = data
 		self.childItems = []
 		
 		if parent:
@@ -31,9 +30,6 @@ class TreeItem:
 	def columnCount(self):
 		return len(self.itemData)
 		
-	def data(self, column):
-		return self.itemData[column]
-	
 	def row(self):
 		
 		if self.parentItem:
@@ -48,13 +44,41 @@ class TreeItem:
 	def parent(self):
 		return self.parentItem
 	
+class GeneralItem(TreeItem):
+	def __init__(self, items, parent):
+		TreeItem.__init__(self, parent)
+		self.items = items
+		
+	def data(self, column):
+		if column < len(self.items):
+			return self.items[column]
+		else:
+			return None
+
+	
 class SchemaItem(TreeItem):
 	def __init__(self, name, parent):
-		TreeItem.__init__(self, [name], parent)
+		TreeItem.__init__(self, parent)
+		self.name = name
+	
+	def data(self, column):
+		if column == 0:
+			return self.name
+		else:
+			return None
 	
 class TableItem(TreeItem):
 	def __init__(self, name, geom_type, parent):
-		TreeItem.__init__(self, [name, geom_type], parent)
+		TreeItem.__init__(self, parent)
+		self.name, self.geom_type = name, geom_type
+		
+	def data(self, column):
+		if column == 0:
+			return self.name
+		elif column == 1:
+			return self.geom_type
+		else:
+			return None
 
 def new_tree():
 	
@@ -93,22 +117,18 @@ class TreeModel(QAbstractItemModel):
 		self.tree = tree
 		
 	def columnCount(self, parent):
-		#if parent.isValid():
-		#	return parent.internalPointer().columnCount()
-		#else:
-		#	return self.tree.columnCount()
 		return 2
 		
 	def data(self, index, role):
 		if not index.isValid():
 			return QVariant()
-		if role != Qt.DisplayRole:
+		if role != Qt.DisplayRole and role != Qt.EditRole:
 			return QVariant()
 		
-		item = index.internalPointer()
-		try:
-			return QVariant(item.data(index.column()))
-		except:
+		retval = index.internalPointer().data(index.column())
+		if retval:
+			return QVariant(retval)
+		else:
 			return QVariant()
 	
 	def flags(self, index):
@@ -117,7 +137,7 @@ class TreeModel(QAbstractItemModel):
 		return Qt.ItemIsEnabled | Qt.ItemIsSelectable
 	
 	def headerData(self, section, orientation, role):
-		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+		if orientation == Qt.Horizontal and role == Qt.DisplayRole and section < len(self.tree.items):
 			return QVariant(self.tree.data(section))
 		return QVariant()
 
@@ -173,7 +193,7 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		self.db = postgis_utils.GeoDB(c)
 		
 		tbls = self.db.list_geotables()
-		rootItem = TreeItem(['hello','world'], None)
+		rootItem = GeneralItem(['hello','world'], None)
 		
 		schemas = {} # name : item
 		for tbl in tbls:
@@ -199,12 +219,11 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		item = index.internalPointer()
 		
 		if isinstance(item, SchemaItem):
-			html = "<h1>%s</h1> (schema)<p>tables: %d" % (item.itemData[0], item.childCount())
+			html = "<h1>%s</h1> (schema)<p>tables: %d" % (item.name, item.childCount())
 		elif isinstance(item, TableItem):
-			table = item.itemData[0]
-			html = "<h1>%s</h1> (table)<p>geometry: %s" % (table, item.itemData[1])
+			html = "<h1>%s</h1> (table)<p>geometry: %s" % (item.name, item.geom_type)
 			html += "<table><tr><th>#<th>Name<th>Type"
-			for fld in self.db.get_table_fields(table):
+			for fld in self.db.get_table_fields(item.name):
 				html += "<tr><td>%s<td>%s<td>%s" % (fld.num, fld.name, fld.data_type)
 			html += "</table>"
 		else:

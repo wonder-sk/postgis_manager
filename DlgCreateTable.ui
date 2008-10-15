@@ -27,15 +27,6 @@
      </item>
     </layout>
    </item>
-   <item row="1" column="0" >
-    <widget class="QTreeWidget" name="fields" >
-     <column>
-      <property name="text" >
-       <string>1</string>
-      </property>
-     </column>
-    </widget>
-   </item>
    <item row="1" column="1" >
     <layout class="QVBoxLayout" >
      <item>
@@ -74,6 +65,13 @@
      </property>
      <property name="standardButtons" >
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::NoButton|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0" >
+    <widget class="QTreeView" name="fields" >
+     <property name="rootIsDecorated" >
+      <bool>false</bool>
      </property>
     </widget>
    </item>
