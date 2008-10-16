@@ -1,6 +1,7 @@
 
 from ManagerDialog_ui import Ui_ManagerDialog
 from DlgCreateTable import DlgCreateTable
+from DlgLoadData import DlgLoadData
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -208,11 +209,13 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 			
 		self.treeModel = TreeModel(rootItem)
 		self.tree.setModel(self.treeModel)
-		
+		self.tree.expandAll()
 		
 		self.connect(self.tree, SIGNAL("clicked(const QModelIndex&)"), self.itemActivated)
 		self.connect(self.btnCreateTable, SIGNAL("clicked()"), self.createTable)
 		self.connect(self.btnDeleteTable, SIGNAL("clicked()"), self.deleteTable)
+		self.connect(self.btnLoadData, SIGNAL("clicked()"), self.loadData)
+		self.connect(self.btnDumpData, SIGNAL("clicked()"), self.dumpData)
 		
 	def itemActivated(self, index):
 		
@@ -231,11 +234,19 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		self.txtMetadata.setHtml(html)
 
 	def createTable(self):
-		dlg = DlgCreateTable()
+		dlg = DlgCreateTable(self)
 		dlg.exec_()
 		
 	def deleteTable(self):
 		print "fuuuj"
+		
+	def loadData(self):
+		dlg = DlgLoadData(self)
+		dlg.exec_()
+
+	def dumpData(self):
+		# TODO: open dialog
+		pass
 
 
 app = QApplication(sys.argv)

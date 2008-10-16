@@ -132,11 +132,21 @@ class GeoDB:
 		c.execute(sql)
 		
 	def create_table(self, table, fields, schema='public'):
-		""" create ordinary table """
+		""" create ordinary table
+				'fields' is array containing tuples (name, type) """
+		# TODO: primary key?
+				
+		if len(fields) == 0:
+			return False
+		
 		c = self.con.cursor()
-		# TODO: fields
-		sql = "CREATE TABLE %s (id int4 primary key)" % table
+		sql = "CREATE TABLE %s (%s %s" % (table, fields[0][0], fields[0][1])
+		for (fldName, fldType) in fields:
+			sql += ", %s %s" % (fldName, fldType)
+		sql += ")"
+		print sql
 		c.execute(sql)
+		return True
 	
 	def delete_table(self, table, schema='public'):
 		""" delete table from the database """
