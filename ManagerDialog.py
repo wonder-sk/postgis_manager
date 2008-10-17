@@ -9,6 +9,7 @@ from PyQt4.QtGui import *
 import sys
 
 import postgis_utils
+import resources
 
 class TreeItem:
 	
@@ -45,6 +46,11 @@ class TreeItem:
 	def parent(self):
 		return self.parentItem
 	
+	def icon(self):
+		return None
+
+
+
 class GeneralItem(TreeItem):
 	def __init__(self, items, parent):
 		TreeItem.__init__(self, parent)
@@ -55,7 +61,7 @@ class GeneralItem(TreeItem):
 			return self.items[column]
 		else:
 			return None
-
+		
 	
 class SchemaItem(TreeItem):
 	def __init__(self, name, parent):
@@ -68,7 +74,13 @@ class SchemaItem(TreeItem):
 		else:
 			return None
 	
+	def icon(self):
+		# TODO: ineffective (instance for every item)
+		return QIcon(":/icons/namespace.xpm")
+
+
 class TableItem(TreeItem):
+	
 	def __init__(self, name, geom_type, parent):
 		TreeItem.__init__(self, parent)
 		self.name, self.geom_type = name, geom_type
@@ -80,6 +92,10 @@ class TableItem(TreeItem):
 			return self.geom_type
 		else:
 			return None
+		
+	def icon(self):
+		# TODO: ineffective (instance for every item)
+		return QIcon(":/icons/table.xpm")
 
 def new_tree():
 	
@@ -123,6 +139,11 @@ class TreeModel(QAbstractItemModel):
 	def data(self, index, role):
 		if not index.isValid():
 			return QVariant()
+		
+		if role == Qt.DecorationRole and index.column() == 0:
+			icon = index.internalPointer().icon()
+			if icon: return QVariant(icon)
+			
 		if role != Qt.DisplayRole and role != Qt.EditRole:
 			return QVariant()
 		
@@ -203,7 +224,7 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		
 	def refreshTable(self):
 		tbls = self.db.list_geotables()
-		rootItem = GeneralItem(['hello','world'], None)
+		rootItem = GeneralItem(['Table','Geometry'], None)
 		
 		schemas = {} # name : item
 		for tbl in tbls:
@@ -221,6 +242,7 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		# TODO: after update treeview doesn't expand :-(
 		self.tree.expandAll()
 		
+		self.tree.resizeColumnToContents(0)
 		
 	def itemActivated(self, index):
 		

@@ -1,0 +1,6 @@
+<RCC>
+    <qresource >
+        <file>icons/table.xpm</file>
+        <file>icons/namespace.xpm</file>
+    </qresource>
+</RCC>
