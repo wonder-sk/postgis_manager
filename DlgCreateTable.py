@@ -4,6 +4,7 @@ from DlgCreateTable_ui import Ui_DlgCreateTable
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+from postgis_utils import DbError
 
 class TableFieldsDelegate(QItemDelegate):
 	""" delegate with some special item editors """
@@ -65,7 +66,7 @@ class TableFieldsModel(QStandardItemModel):
 
 class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 	
-	def __init__(self, db=None, parent=None):
+	def __init__(self, parent=None, db=None):
 		QDialog.__init__(self, parent)
 		
 		self.setupUi(self)
@@ -155,13 +156,21 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 			fldType = str(m.data(m.index(row,1,QModelIndex())).toString())
 			flds.append( (fldName, fldType) )
 				
-		# commit to DB
 		if self.db:
-			self.db.createTable(table, flds)
-			if useGeomColumn:
-				self.db.add_geometry_column(table, geomType, schema, geomColumn)
-				if useSpatialIndex:
-					self.db.create_spatial_index(table, schema, geomColumn)
+			
+			# commit to DB
+			try:
+				self.db.create_table(table, flds)
+				if useGeomColumn:
+					self.db.add_geometry_column(table, geomType, schema, geomColumn)
+					if useSpatialIndex:
+						self.db.create_spatial_index(table, schema, geomColumn)
+				self.emit(SIGNAL("databaseChanged()"))
+			except DbError, e:
+				self.db.con.rollback()
+				QMessageBox.critical(self, "DB error", e.message+"\nSQL query:\n"+e.query)
+				return
+					
 		else:
 			print table, flds, useGeomColumn
 			if useGeomColumn:

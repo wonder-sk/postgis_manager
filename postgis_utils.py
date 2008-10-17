@@ -14,6 +14,11 @@ class TableAttribute:
 	def __init__(self, row):
 		self.num, self.name, self.data_type, self.char_max_len, self.modifier, self.notnull, self.hasdefault = row
 
+class DbError(Exception):
+	def __init__(self, message, query=None):
+		self.message = message
+		self.query = query
+
 
 class GeoDB:
 	
@@ -22,7 +27,8 @@ class GeoDB:
 	
 	def list_schemas(self):
 		c = self.con.cursor()
-		c.execute("SELECT * FROM pg_namespace")
+		sql = "SELECT * FROM pg_namespace"
+		self._exec_sql(c, sql)
 		
 		schemas = []
 		
@@ -81,7 +87,7 @@ class GeoDB:
 		      "WHERE (relkind = 'r' or relkind='v') " \
 		      "  AND nspname NOT IN ('information_schema','pg_catalog') " \
 		      "ORDER BY nspname, relname"
-		c.execute(sql)
+		self._exec_sql(c, sql)
 		return c.fetchall()
 			
 	def get_table_metadata(self, table, schema='public'):
@@ -112,7 +118,7 @@ class GeoDB:
 				a.atttypid = t.oid
 			ORDER BY a.attnum""" % table
 
-		c.execute(sql)
+		self._exec_sql(c, sql)
 		attrs = []
 		for row in c.fetchall():
 			attrs.append(TableAttribute(row))
@@ -129,7 +135,8 @@ class GeoDB:
 		c = self.con.cursor()
 		
 		sql = "SELECT AddGeometryColumn('%s', '%s', '%s', %d, '%s', %d)" % (schema, table, geom_column, srid, geom_type, dim)
-		c.execute(sql)
+		self._exec_sql(c, sql)
+		self.con.commit()
 		
 	def create_table(self, table, fields, schema='public'):
 		""" create ordinary table
@@ -141,23 +148,32 @@ class GeoDB:
 		
 		c = self.con.cursor()
 		sql = "CREATE TABLE %s (%s %s" % (table, fields[0][0], fields[0][1])
-		for (fldName, fldType) in fields:
+		for (fldName, fldType) in fields[1:]:
 			sql += ", %s %s" % (fldName, fldType)
 		sql += ")"
-		print sql
-		c.execute(sql)
+		self._exec_sql(c, sql)
+		self.con.commit()
 		return True
 	
 	def delete_table(self, table, schema='public'):
 		""" delete table from the database """
 		c = self.con.cursor()
 		sql = "DROP TABLE %s" % table
-		c.execute(sql)
+		self._exec_sql(c, sql)
+		self.con.commit()
 	
 	def create_spatial_index(self, table, schema='public', geom_column='the_geom'):
 		c = self.con.cursor()
 		sql = "CREATE INDEX sidx_%s ON %s USING GIST(%s GIST_GEOMETRY_OPS)" % (table, table, geom_column)
-		c.execute(sql)
+		self._exec_sql(c, sql)
+		self.con.commit()
+		
+	def _exec_sql(self, cursor, sql):
+		try:
+			cursor.execute(sql)
+		except psycopg2.Error, e:
+			raise DbError(e.message, e.cursor.query)
+		
 
 # for debugging / testing
 if __name__ == '__main__':
@@ -173,6 +189,11 @@ if __name__ == '__main__':
 
 	print '=========='
 
-	for fld in db.get_table_metadata('trencin'):
-		print fld
+	#for fld in db.get_table_metadata('trencin'):
+	#	print fld
+	
+	try:
+		db.create_table('trrrr', [('id','serial'), ('test','text')])
+	except DbError, e:
+		print e.message, e.query
 	

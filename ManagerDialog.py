@@ -193,6 +193,15 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		c = postgis_utils.connect_db('localhost','gis','gisak','g')
 		self.db = postgis_utils.GeoDB(c)
 		
+		self.refreshTable()
+		
+		self.connect(self.tree, SIGNAL("clicked(const QModelIndex&)"), self.itemActivated)
+		self.connect(self.btnCreateTable, SIGNAL("clicked()"), self.createTable)
+		self.connect(self.btnDeleteTable, SIGNAL("clicked()"), self.deleteTable)
+		self.connect(self.btnLoadData, SIGNAL("clicked()"), self.loadData)
+		self.connect(self.btnDumpData, SIGNAL("clicked()"), self.dumpData)
+		
+	def refreshTable(self):
 		tbls = self.db.list_geotables()
 		rootItem = GeneralItem(['hello','world'], None)
 		
@@ -209,13 +218,9 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 			
 		self.treeModel = TreeModel(rootItem)
 		self.tree.setModel(self.treeModel)
+		# TODO: after update treeview doesn't expand :-(
 		self.tree.expandAll()
 		
-		self.connect(self.tree, SIGNAL("clicked(const QModelIndex&)"), self.itemActivated)
-		self.connect(self.btnCreateTable, SIGNAL("clicked()"), self.createTable)
-		self.connect(self.btnDeleteTable, SIGNAL("clicked()"), self.deleteTable)
-		self.connect(self.btnLoadData, SIGNAL("clicked()"), self.loadData)
-		self.connect(self.btnDumpData, SIGNAL("clicked()"), self.dumpData)
 		
 	def itemActivated(self, index):
 		
@@ -234,11 +239,34 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		self.txtMetadata.setHtml(html)
 
 	def createTable(self):
-		dlg = DlgCreateTable(self)
+		dlg = DlgCreateTable(self, self.db)
+		self.connect(dlg, SIGNAL("databaseChanged()"), self.refreshTable)
 		dlg.exec_()
 		
 	def deleteTable(self):
-		print "fuuuj"
+		
+		sel = self.tree.selectionModel()
+		indexes = sel.selectedRows()
+		if len(indexes) == 0:
+			QMessageBox.information(self, "sorry", "select a table for deletion!")
+			return
+		if len(indexes) > 1:
+			QMessageBox.information(self, "sorry", "select only one table")
+			return
+			
+		index = indexes[0]
+		ptr = index.internalPointer()
+		if not isinstance(ptr, TableItem):
+			QMessageBox.information(self, "sorry", "select a TABLE for deletion")
+			return
+		
+		res = QMessageBox.question(self, "hey!", "really delete table %s ?" % ptr.name, QMessageBox.Yes | QMessageBox.No)
+		if res != QMessageBox.Yes:
+			return
+		
+		self.db.delete_table(ptr.name)
+		self.refreshTable()
+		QMessageBox.information(self, "good", "table deleted.")
 		
 	def loadData(self):
 		dlg = DlgLoadData(self)
