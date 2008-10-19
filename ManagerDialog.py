@@ -68,6 +68,10 @@ class SchemaItem(TreeItem):
 	def __init__(self, name, parent):
 		TreeItem.__init__(self, parent)
 		self.name = name
+		
+		# load (shared) icon with first instance of schema item
+		if not hasattr(SchemaItem, 'schemaIcon'):
+			SchemaItem.schemaIcon = QIcon(":/icons/namespace.xpm")
 	
 	def data(self, column):
 		if column == 0:
@@ -76,8 +80,7 @@ class SchemaItem(TreeItem):
 			return None
 	
 	def icon(self):
-		# TODO: ineffective (instance for every item)
-		return QIcon(":/icons/namespace.xpm")
+		return self.schemaIcon
 
 
 class TableItem(TreeItem):
@@ -85,6 +88,10 @@ class TableItem(TreeItem):
 	def __init__(self, name, geom_type, parent):
 		TreeItem.__init__(self, parent)
 		self.name, self.geom_type = name, geom_type
+		
+		# load (shared) icon with first instance of table item
+		if not hasattr(TableItem, 'tableIcon'):
+			TableItem.tableIcon = QIcon(":/icons/table.xpm")
 		
 	def data(self, column):
 		if column == 0:
@@ -95,8 +102,7 @@ class TableItem(TreeItem):
 			return None
 		
 	def icon(self):
-		# TODO: ineffective (instance for every item)
-		return QIcon(":/icons/table.xpm")
+		return self.tableIcon
 
 def new_tree():
 	
@@ -108,31 +114,13 @@ def new_tree():
 	return rootItem
 
 
-def create_tree():
-	rootItem = TreeItem(['title','summary'], None)
-	
-	item_gs = TreeItem(['Getting Started','How to familiarize yourself with Qt Designer'], rootItem)
-	item_gs1 = TreeItem(['Launching Designer', 'Running the Qt Designer application'], item_gs)
-	item_gs2 = TreeItem(['The User Interface', 'How to interact with Qt Designer'], item_gs)
-	
-	item_dc = TreeItem(['Designing a Component', 'Creating a GUI for your application'], rootItem)
-	item_dc1 = TreeItem(['Creating a Dialog', 'How to create a dialog'], item_dc)
-	item_dc2 = TreeItem(['Composing the Dialog', 'Putting widgets into the dialog example'], item_dc)
-	item_dc3 = TreeItem(['Creating a Layout', 'Arranging widgets on a form'], item_dc)
-	
-	item_uc = TreeItem(['Using a Component in Your Application', 'Generating code from forms'], rootItem)
-	item_uc1 = TreeItem(['The Direct Approach', 'Using a form without any adjustments'], item_uc)
-	item_uc11 = TreeItem(['The Single Inheritance Approach', 'Subclassing a form\'s base class'], item_uc1)
-	
-	return rootItem
-	
-
 
 class TreeModel(QAbstractItemModel):
 	
-	def __init__(self, tree, parent=None):
+	def __init__(self, tree, parent=None, db=None):
 		QAbstractItemModel.__init__(self, parent)
 		self.tree = tree
+		self.db = db
 		
 	def columnCount(self, parent):
 		return 2
@@ -157,7 +145,11 @@ class TreeModel(QAbstractItemModel):
 	def flags(self, index):
 		if not index.isValid():
 			return 0
-		return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+		
+		flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable 
+		if index.column() == 0:
+			flags |= Qt.ItemIsEditable
+		return flags
 	
 	def headerData(self, section, orientation, role):
 		if orientation == Qt.Horizontal and role == Qt.DisplayRole and section < len(self.tree.items):
@@ -202,6 +194,36 @@ class TreeModel(QAbstractItemModel):
 			
 		return parentItem.childCount()
 
+	def setData(self, index, value, role):
+		if role != Qt.EditRole or index.column() != 0:
+			return False
+			
+		item = index.internalPointer()
+		new_name = str(value.toString())
+		if isinstance(item, TableItem):
+			# rename table
+			try:
+				schema = item.parentItem.name
+				self.db.rename_table(item.name, new_name, schema)
+				self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex &)'), index, index)
+				return True
+			except postgis_utils.DbError, e:
+				QMessageBox.critical(None, "error", "Couldn't rename table:\nMessage: %s\nQuery: %s" % (e.message, e.query) )
+				return False
+			
+		elif isinstance(item, SchemaItem):
+			# rename schema
+			try:
+				self.db.rename_schema(item.name, new_name)
+				self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex &)'), index, index)
+				return True
+			except postgis_utils.DbError, e:
+				QMessageBox.critical(None, "error", "Couldn't rename schema:\nMessage: %s\nQuery: %s" % (e.message, e.query) )
+				return False
+			
+		else:
+			print "set", str(value.toString()), role
+			return False
 
 
 
@@ -214,15 +236,24 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		
 		self.db = postgis_utils.GeoDB(host='localhost',dbname='gis',user='gisak',passwd='g')
 		
-		self.refreshTable()
+		rootItem = self.loadTreeItems()
+		self.treeModel = TreeModel(rootItem, self, self.db)
+		self.tree.setModel(self.treeModel)
+		
+		self.tree.expandAll()
+		self.tree.resizeColumnToContents(0)
 		
 		self.connect(self.tree, SIGNAL("clicked(const QModelIndex&)"), self.itemActivated)
+		self.connect(self.tree.model(), SIGNAL("dataChanged(const QModelIndex &, const QModelIndex &)"), self.refreshTable)
 		self.connect(self.btnCreateTable, SIGNAL("clicked()"), self.createTable)
 		self.connect(self.btnDeleteTable, SIGNAL("clicked()"), self.deleteTable)
+		self.connect(self.btnCreateSchema, SIGNAL("clicked()"), self.createSchema)
+		self.connect(self.btnDeleteSchema, SIGNAL("clicked()"), self.deleteSchema)
 		self.connect(self.btnLoadData, SIGNAL("clicked()"), self.loadData)
 		self.connect(self.btnDumpData, SIGNAL("clicked()"), self.dumpData)
 		
-	def refreshTable(self):
+		
+	def loadTreeItems(self):
 		tbls = self.db.list_geotables()
 		rootItem = GeneralItem(['Table','Geometry'], None)
 		
@@ -236,13 +267,12 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 				schemas[schema] = schemaItem
 			
 			tableItem = TableItem(tablename, geom_type, schemas[schema])
-			
-		self.treeModel = TreeModel(rootItem)
-		self.tree.setModel(self.treeModel)
-		# TODO: after update treeview doesn't expand :-(
-		self.tree.expandAll()
+		return rootItem
 		
-		self.tree.resizeColumnToContents(0)
+	def refreshTable(self):
+		self.tree.model().tree = self.loadTreeItems()
+		self.tree.model().reset()
+		self.tree.expandAll()
 		
 	def itemActivated(self, index):
 		
@@ -289,6 +319,38 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		self.db.delete_table(ptr.name)
 		self.refreshTable()
 		QMessageBox.information(self, "good", "table deleted.")
+		
+	
+	def createSchema(self):
+		
+		(name, ok) = QInputDialog.getText(self, "Schema name", "Enter name for new schema")
+		if not name.isEmpty():
+			self.db.create_schema(name)
+			self.refreshTable()
+			QMessageBox.information(self, "good", "schema created.")
+
+	
+	def deleteSchema(self):
+		sel = self.tree.selectionModel()
+		indexes = sel.selectedRows()
+		if len(indexes) == 0:
+			QMessageBox.information(self, "sorry", "select a schema for deletion!")
+			return
+	
+		index = indexes[0]
+		ptr = index.internalPointer()
+		if not isinstance(ptr, SchemaItem):
+			QMessageBox.information(self, "sorry", "select a SCHEMA for deletion")
+			return
+		
+		res = QMessageBox.question(self, "hey!", "really delete schema %s ?" % ptr.name, QMessageBox.Yes | QMessageBox.No)
+		if res != QMessageBox.Yes:
+			return
+		
+		self.db.delete_schema(ptr.name)
+		self.refreshTable()
+		QMessageBox.information(self, "good", "schema deleted.")
+		
 		
 	def loadData(self):
 		dlg = DlgLoadData(self, self.db)

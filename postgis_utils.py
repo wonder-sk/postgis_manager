@@ -95,6 +95,9 @@ class GeoDB:
 			schema_where = " AND nspname = '%s' " % schema
 		else:
 			schema_where = " AND nspname NOT IN ('information_schema','pg_catalog') "
+			
+		# TODO: geometry_columns relation may not exist!
+		# TODO: list empty schemas!
 		
 		# LEFT OUTER JOIN: zmena oproti LEFT JOIN ze ak moze spojit viackrat tak to urobi
 		sql = "SELECT relname, nspname, relkind, geometry_columns.f_geometry_column, geometry_columns.type FROM pg_class " \
@@ -174,6 +177,34 @@ class GeoDB:
 		""" delete table from the database """
 		c = self.con.cursor()
 		sql = "DROP TABLE %s" % table
+		self._exec_sql(c, sql)
+		self.con.commit()
+		
+	def rename_table(self, table, new_table, schema='public'):
+		""" rename a table in database """
+		sql = "ALTER TABLE %s.%s RENAME TO %s" % (schema, table, new_table)
+		c = self.con.cursor()
+		self._exec_sql(c, sql)
+		self.con.commit()
+		
+	def create_schema(self, schema):
+		""" create a new empty schema in database """
+		sql = "CREATE SCHEMA %s" % schema
+		c = self.con.cursor()
+		self._exec_sql(c, sql)
+		self.con.commit()
+		
+	def delete_schema(self, schema):
+		""" drop (empty) schema from database """
+		sql = "DROP SCHEMA %s" % schema
+		c = self.con.cursor()
+		self._exec_sql(c, sql)
+		self.con.commit()
+		
+	def rename_schema(self, schema, new_schema):
+		""" rename a schema in database """
+		sql = "ALTER SCHEMA %s RENAME TO %s" % (schema, new_schema)
+		c = self.con.cursor()
 		self._exec_sql(c, sql)
 		self.con.commit()
 	

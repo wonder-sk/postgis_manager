@@ -5,7 +5,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>615</width>
+    <width>666</width>
     <height>442</height>
    </rect>
   </property>
@@ -46,6 +46,20 @@
       <widget class="QPushButton" name="btnDeleteTable" >
        <property name="text" >
         <string>Delete Table</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnCreateSchema" >
+       <property name="text" >
+        <string>Create schema</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnDeleteSchema" >
+       <property name="text" >
+        <string>Delete schema</string>
        </property>
       </widget>
      </item>
