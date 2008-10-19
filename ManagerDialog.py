@@ -2,6 +2,7 @@
 from ManagerDialog_ui import Ui_ManagerDialog
 from DlgCreateTable import DlgCreateTable
 from DlgLoadData import DlgLoadData
+from DlgDumpData import DlgDumpData
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -211,8 +212,7 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		
 		self.setupUi(self)
 		
-		c = postgis_utils.connect_db('localhost','gis','gisak','g')
-		self.db = postgis_utils.GeoDB(c)
+		self.db = postgis_utils.GeoDB(host='localhost',dbname='gis',user='gisak',passwd='g')
 		
 		self.refreshTable()
 		
@@ -295,8 +295,8 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		dlg.exec_()
 
 	def dumpData(self):
-		# TODO: open dialog
-		pass
+		dlg = DlgDumpData(self, self.db)
+		dlg.exec_()
 
 
 app = QApplication(sys.argv)

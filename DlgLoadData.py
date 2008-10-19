@@ -44,6 +44,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 			return
 		
 		schemas = self.db.list_schemas()
+		self.cboSchema.clear()
 		for schema in schemas:
 			self.cboSchema.addItem(schema[0])
 			
@@ -54,6 +55,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		
 		schema = str(self.cboSchema.currentText())
 		tables = self.db.list_geotables(schema)
+		self.cboTable.clear()
 		for table in tables:
 			self.cboTable.addItem(table[0])
 		self.cboTable.setEditText(QString())

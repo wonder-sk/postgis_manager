@@ -7,8 +7,6 @@ licensed under the terms of GNU GPL v2
 
 import psycopg2
 
-def connect_db(host, dbname, user, passwd):
-	return psycopg2.connect("host='%s' dbname='%s' user='%s' password='%s'" % (host, dbname, user, passwd))
 
 class TableAttribute:
 	def __init__(self, row):
@@ -22,8 +20,21 @@ class DbError(Exception):
 
 class GeoDB:
 	
-	def __init__(self, con):
-		self.con = con
+	def __init__(self, host=None, port=None, dbname=None, user=None, passwd=None):
+		con_str = ''
+		if host:   con_str += "host='%s' " % host
+		if port:   con_str += "port=%d " % port
+		if dbname: con_str += "dbname='%s' " % dbname
+		if user:   con_str += "user='%s' " % user
+		if passwd: con_str += "password='%s' " % passwd
+		
+		self.con = psycopg2.connect(con_str)
+		
+		self.host = host
+		self.port = port
+		self.dbname = dbname
+		self.user = user
+		self.passwd = passwd
 	
 	def list_schemas(self):
 		c = self.con.cursor()
@@ -182,8 +193,7 @@ class GeoDB:
 # for debugging / testing
 if __name__ == '__main__':
 
-	con = connect_db('localhost', 'gis', 'gisak', 'g')
-	db = GeoDB(con)
+	db = GeoDB(host='localhost',dbname='gis',user='gisak',passwd='g')
 	
 	print db.list_schemas()
 	print '=========='
