@@ -41,7 +41,7 @@ class GeoDB:
 			
 		return schemas
 			
-	def list_geotables(self):
+	def list_geotables(self, schema=None):
 		"""
 			get list of tables with schemas, whether user has privileges, whether table has geometry column(s) etc.
 			
@@ -80,12 +80,16 @@ class GeoDB:
 		"""
 		c = self.con.cursor()
 		
+		if schema:
+			schema_where = " AND nspname = '%s' " % schema
+		else:
+			schema_where = " AND nspname NOT IN ('information_schema','pg_catalog') "
+		
 		# LEFT OUTER JOIN: zmena oproti LEFT JOIN ze ak moze spojit viackrat tak to urobi
 		sql = "SELECT relname, nspname, relkind, geometry_columns.f_geometry_column, geometry_columns.type FROM pg_class " \
 		      "  JOIN pg_namespace ON relnamespace=pg_namespace.oid " \
 		      "  LEFT OUTER JOIN geometry_columns ON relname=f_table_name AND nspname=f_table_schema " \
-		      "WHERE (relkind = 'r' or relkind='v') " \
-		      "  AND nspname NOT IN ('information_schema','pg_catalog') " \
+		      "WHERE (relkind = 'r' or relkind='v') " + schema_where + \
 		      "ORDER BY nspname, relname"
 		self._exec_sql(c, sql)
 		return c.fetchall()

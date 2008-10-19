@@ -5,14 +5,19 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 import subprocess
+import re
+
+from postgis_utils import DbError
 
 
 class DlgLoadData(QDialog, Ui_DlgLoadData):
 
-	def __init__(self, parent=None):
+	def __init__(self, parent=None, db=None):
 		QDialog.__init__(self, parent)
 		
 		self.setupUi(self)
+		
+		self.db = db
 		
 		b = QPushButton("&Load")
 		self.buttonBox.addButton(b, QDialogButtonBox.ActionRole)
@@ -25,14 +30,33 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		for widget in [self.radCreate, self.radAppend, self.radCreateOnly, self.chkSrid,
 		               self.chkGeomColumn, self.chkEncoding, self.radExec, self.radSave]:
 			self.connect(widget, SIGNAL("clicked()"), self.updateUi)
+			
+		self.connect(self.cboSchema, SIGNAL("clicked()"), self.populateTables)
 		
-		self.populateSchemasTables()
+		self.populateSchemas()
+		self.populateTables()
 		self.populateEncodings()
 		self.updateUi()
 		
-	def populateSchemasTables(self):
-		# TODO: populate with data from database
-		pass
+	def populateSchemas(self):
+		
+		if not self.db:
+			return
+		
+		schemas = self.db.list_schemas()
+		for schema in schemas:
+			self.cboSchema.addItem(schema[0])
+			
+	def populateTables(self):
+		
+		if not self.db:
+			return
+		
+		schema = str(self.cboSchema.currentText())
+		tables = self.db.list_geotables(schema)
+		for table in tables:
+			self.cboTable.addItem(table[0])
+		self.cboTable.setEditText(QString())
 	
 	def populateEncodings(self):
 		encodings = ['ASCII', 'CP1250', 'ISO-8859-2', 'UTF-8']
@@ -117,11 +141,21 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 			
 			if out == subprocess.PIPE:
 				# read the output while the process is running
-				# TODO: run SQL commands within current DB connection
+				data = ''
+				cursor = self.db.con.cursor()
+				newcommand = re.compile(";$", re.MULTILINE)
 				while p.poll() == None:
-					print p.stdout.read()
-				# read the rest ... is this necessary?
-				print p.stdout.read()
+					data += p.stdout.read()
+					
+					# split the commands
+					cmds = newcommand.split(data)
+					for cmd in cmds[:-1]:
+						# run SQL commands within current DB connection
+						self.db._exec_sql(cursor, cmd)
+					data = cmds[-1]
+					
+				# commit!
+				self.db.con.commit()
 			else:
 				# just wait until it finishes
 				p.wait()
@@ -129,7 +163,10 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 				out.close()
 			
 		except OSError, e:
-			QMessageBox.critical(self, "OSError", "Message: %s\nFilename: %s" % (e.filename, e.message))
+			QMessageBox.critical(self, "OSError", "Message: %s\nFilename: %s" % (e.message, e.filename))
+			return
+		except DbError, e:
+			QMessageBox.critical(self, "DbError", "Message: %s\nQuery: %s" % (e.message, e.query))
 			return
 		
 		# check whether it has run without errors

@@ -291,7 +291,7 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		QMessageBox.information(self, "good", "table deleted.")
 		
 	def loadData(self):
-		dlg = DlgLoadData(self)
+		dlg = DlgLoadData(self, self.db)
 		dlg.exec_()
 
 	def dumpData(self):
