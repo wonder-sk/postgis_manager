@@ -159,14 +159,19 @@ class GeoDB:
 		return c.fetchall()
 	"""
 		
-	def add_geometry_column(self, table, geom_type, schema='public', geom_column='the_geom', srid=-1, dim=2):
+	def add_geometry_column(self, table, geom_type, schema=None, geom_column='the_geom', srid=-1, dim=2):
 		c = self.con.cursor()
 		
-		sql = "SELECT AddGeometryColumn('%s', '%s', '%s', %d, '%s', %d)" % (schema, table, geom_column, srid, geom_type, dim)
+		# use schema if explicitly specified
+		if schema:
+			schema_part = "'%s', " % schema
+		else:
+			schema_part = ""
+		sql = "SELECT AddGeometryColumn(%s'%s', '%s', %d, '%s', %d)" % (schema_part, table, geom_column, srid, geom_type, dim)
 		self._exec_sql(c, sql)
 		self.con.commit()
 		
-	def create_table(self, table, fields, schema='public'):
+	def create_table(self, table, fields, schema=None):
 		""" create ordinary table
 				'fields' is array containing instances of TableField """
 		# TODO: primary key?
@@ -174,8 +179,10 @@ class GeoDB:
 		if len(fields) == 0:
 			return False
 		
+		table_name = self._table_name(schema, table)
+		
 		c = self.con.cursor()
-		sql = "CREATE TABLE %s (%s %s %s" % (table, fields[0].name, fields[0].data_type, fields[0].is_null_txt())
+		sql = "CREATE TABLE %s (%s %s %s" % (table_name, fields[0].name, fields[0].data_type, fields[0].is_null_txt())
 		for field in fields[1:]:
 			sql += ", %s %s %s" % (field.name, field.data_type, field.is_null_txt())
 		sql += ")"
@@ -183,19 +190,39 @@ class GeoDB:
 		self.con.commit()
 		return True
 	
-	def delete_table(self, table, schema='public'):
+	def delete_table(self, table, schema=None):
 		""" delete table from the database """
+		table_name = self._table_name(schema, table)
 		c = self.con.cursor()
-		sql = "DROP TABLE %s" % table
+		sql = "DROP TABLE %s" % table_name
 		self._exec_sql(c, sql)
 		self.con.commit()
 		
-	def rename_table(self, table, new_table, schema='public'):
+	def rename_table(self, table, new_table, schema=None):
 		""" rename a table in database """
-		sql = "ALTER TABLE %s.%s RENAME TO %s" % (schema, table, new_table)
+		table_name = self._table_name(schema, table)
+		sql = "ALTER TABLE %s RENAME TO %s" % (table_name, new_table)
 		c = self.con.cursor()
 		self._exec_sql(c, sql)
 		self.con.commit()
+		
+	def create_view(self, name, query, schema=None):
+		view_name = self._table_name(schema, name)
+		c = self.con.cursor()
+		sql = "CREATE VIEW %s AS %s" % (view_name, query)
+		self._exec_sql(c, sql)
+		self.con.commit()
+	
+	def delete_view(self, name, schema=None):
+		view_name = self._table_name(schema, name)
+		c = self.con.cursor()
+		sql = "DROP VIEW %s" % view_name
+		self._exec_sql(c, sql)
+		self.con.commit()
+	
+	def rename_view(self, name, new_name, schema=None):
+		""" rename view in database """
+		self.rename_table(name, new_name, schema)
 		
 	def create_schema(self, schema):
 		""" create a new empty schema in database """
@@ -218,9 +245,10 @@ class GeoDB:
 		self._exec_sql(c, sql)
 		self.con.commit()
 	
-	def create_spatial_index(self, table, schema='public', geom_column='the_geom'):
+	def create_spatial_index(self, table, schema=None, geom_column='the_geom'):
+		table_name = self._table_name(schema, table)
 		c = self.con.cursor()
-		sql = "CREATE INDEX sidx_%s ON %s USING GIST(%s GIST_GEOMETRY_OPS)" % (table, table, geom_column)
+		sql = "CREATE INDEX sidx_%s ON %s USING GIST(%s GIST_GEOMETRY_OPS)" % (table, table_name, geom_column)
 		self._exec_sql(c, sql)
 		self.con.commit()
 		
@@ -229,6 +257,12 @@ class GeoDB:
 			cursor.execute(sql)
 		except psycopg2.Error, e:
 			raise DbError(e.message, e.cursor.query)
+		
+	def _table_name(self, schema, table):
+		if not schema:
+			return table
+		else:
+			return "%s.%s" % (schema, table)
 		
 
 # for debugging / testing

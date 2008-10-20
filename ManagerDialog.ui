@@ -38,14 +38,14 @@
      <item>
       <widget class="QPushButton" name="btnCreateTable" >
        <property name="text" >
-        <string>Create Table</string>
+        <string>Create table</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="btnDeleteTable" >
        <property name="text" >
-        <string>Delete Table</string>
+        <string>Delete table/view</string>
        </property>
       </widget>
      </item>

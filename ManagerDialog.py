@@ -199,14 +199,14 @@ class TreeModel(QAbstractItemModel):
 		item = index.internalPointer()
 		new_name = str(value.toString())
 		if isinstance(item, TableItem):
-			# rename table
+			# rename table or view
 			try:
 				schema = item.parentItem.name
 				self.db.rename_table(item.name, new_name, schema)
 				self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex &)'), index, index)
 				return True
 			except postgis_utils.DbError, e:
-				QMessageBox.critical(None, "error", "Couldn't rename table:\nMessage: %s\nQuery: %s" % (e.message, e.query) )
+				QMessageBox.critical(None, "error", "Couldn't rename:\nMessage: %s\nQuery: %s" % (e.message, e.query) )
 				return False
 			
 		elif isinstance(item, SchemaItem):
@@ -311,25 +311,31 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		sel = self.tree.selectionModel()
 		indexes = sel.selectedRows()
 		if len(indexes) == 0:
-			QMessageBox.information(self, "sorry", "select a table for deletion!")
+			QMessageBox.information(self, "sorry", "select a table/view for deletion!")
 			return
 		if len(indexes) > 1:
-			QMessageBox.information(self, "sorry", "select only one table")
+			QMessageBox.information(self, "sorry", "select only one table/view")
 			return
 			
 		index = indexes[0]
 		ptr = index.internalPointer()
 		if not isinstance(ptr, TableItem):
-			QMessageBox.information(self, "sorry", "select a TABLE for deletion")
+			QMessageBox.information(self, "sorry", "select a TABLE or VIEW for deletion")
 			return
 		
-		res = QMessageBox.question(self, "hey!", "really delete table %s ?" % ptr.name, QMessageBox.Yes | QMessageBox.No)
+		res = QMessageBox.question(self, "hey!", "really delete table/view %s ?" % ptr.name, QMessageBox.Yes | QMessageBox.No)
 		if res != QMessageBox.Yes:
 			return
 		
-		self.db.delete_table(ptr.name)
-		self.refreshTable()
-		QMessageBox.information(self, "good", "table deleted.")
+		try:
+			if ptr.is_view:
+				self.db.delete_view(ptr.name)
+			else:
+				self.db.delete_table(ptr.name)
+			self.refreshTable()
+			QMessageBox.information(self, "good", "table/view deleted.")
+		except postgis_utils.DbError, e:
+			QMessageBox.critical(self, "error", "Message:\n%s\nQuery:\n%s\n" % (e.message, e.query))
 		
 	
 	def createSchema(self):
