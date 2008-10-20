@@ -30,9 +30,6 @@ class TreeItem:
 	def childCount(self):
 		return len(self.childItems)
 	
-	def columnCount(self):
-		return len(self.itemData)
-		
 	def row(self):
 		
 		if self.parentItem:
@@ -52,17 +49,13 @@ class TreeItem:
 
 
 
-class GeneralItem(TreeItem):
-	def __init__(self, items, parent):
+class DatabaseItem(TreeItem):
+	def __init__(self, parent=None):
 		TreeItem.__init__(self, parent)
-		self.items = items
-		
+	
 	def data(self, column):
-		if column < len(self.items):
-			return self.items[column]
-		else:
-			return None
-		
+		return None
+
 	
 class SchemaItem(TreeItem):
 	def __init__(self, name, parent):
@@ -121,6 +114,7 @@ class TreeModel(QAbstractItemModel):
 		QAbstractItemModel.__init__(self, parent)
 		self.tree = tree
 		self.db = db
+		self.header = ['Table', 'Geometry']
 		
 	def columnCount(self, parent):
 		return 2
@@ -152,8 +146,8 @@ class TreeModel(QAbstractItemModel):
 		return flags
 	
 	def headerData(self, section, orientation, role):
-		if orientation == Qt.Horizontal and role == Qt.DisplayRole and section < len(self.tree.items):
-			return QVariant(self.tree.data(section))
+		if orientation == Qt.Horizontal and role == Qt.DisplayRole and section < len(self.header):
+			return QVariant(self.header[section])
 		return QVariant()
 
 	def index(self, row, column, parent):
@@ -255,16 +249,22 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		
 	def loadTreeItems(self):
 		tbls = self.db.list_geotables()
-		rootItem = GeneralItem(['Table','Geometry'], None)
+		rootItem = DatabaseItem()
 		
 		schemas = {} # name : item
+		
+		# add all schemas
+		for schema in self.db.list_schemas():
+			schema_name = schema[0]
+			schemas[schema_name] = SchemaItem(schema_name, rootItem)
+		
 		for tbl in tbls:
 			tablename, schema, reltype, geom_col, geom_type = tbl
 			
 			# add schema if doesn't exist
 			if not schemas.has_key(schema):
-				schemaItem = SchemaItem(schema, rootItem)
-				schemas[schema] = schemaItem
+				print "AAAA!!"
+				continue
 			
 			tableItem = TableItem(tablename, geom_type, schemas[schema])
 		return rootItem
@@ -282,9 +282,11 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 			html = "<h1>%s</h1> (schema)<p>tables: %d" % (item.name, item.childCount())
 		elif isinstance(item, TableItem):
 			html = "<h1>%s</h1> (table)<p>geometry: %s" % (item.name, item.geom_type)
-			html += "<table><tr><th>#<th>Name<th>Type"
+			html += "<table><tr><th>#<th>Name<th>Type<th>Null"
 			for fld in self.db.get_table_fields(item.name):
-				html += "<tr><td>%s<td>%s<td>%s" % (fld.num, fld.name, fld.data_type)
+				if fld.notnull: is_null_txt = "N"
+				else: is_null_txt = "Y"
+				html += "<tr><td>%s<td>%s<td>%s<td>%s" % (fld.num, fld.name, fld.data_type, is_null_txt)
 			html += "</table>"
 		else:
 			html = "---"

@@ -4,7 +4,7 @@ from DlgCreateTable_ui import Ui_DlgCreateTable
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from postgis_utils import DbError
+import postgis_utils
 
 class TableFieldsDelegate(QItemDelegate):
 	""" delegate with some special item editors """
@@ -41,6 +41,9 @@ class TableFieldsDelegate(QItemDelegate):
 		elif index.column() == 1:
 			txt = m.data(index, Qt.DisplayRole).toString()
 			editor.setEditText(txt)
+		else:
+			# use default
+			QItemDelegate.setEditorData(self, editor, index)
 		
 	def setModelData(self, editor, model, index):
 		""" save data from editor back to model """
@@ -48,19 +51,20 @@ class TableFieldsDelegate(QItemDelegate):
 			model.setData(index, QVariant(editor.text()))
 		elif index.column() == 1:
 			model.setData(index, QVariant(editor.currentText()))
+		else:
+			# use default
+			QItemDelegate.setModelData(self, editor, model, index)
 
 
 class TableFieldsModel(QStandardItemModel):
 	
 	def __init__(self, parent):
-		QStandardItemModel.__init__(self, 0,2, parent)
+		QStandardItemModel.__init__(self, 0,3, parent)
+		self.header = ['Name', 'Type', 'Null']
 		
 	def headerData(self, section, orientation, role):
 		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-			if section==0:
-				return QVariant("Name")
-			elif section==1:
-				return QVariant("Type")
+			return QVariant(self.header[section])
 		return QVariant()
 
 
@@ -84,11 +88,27 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 
 		self.connect(self.btnAddField, SIGNAL("clicked()"), self.addField)
 		self.connect(self.btnDeleteField, SIGNAL("clicked()"), self.deleteField)
+		self.connect(self.btnFieldUp, SIGNAL("clicked()"), self.fieldUp)
+		self.connect(self.btnFieldDown, SIGNAL("clicked()"), self.fieldDown)
 		self.connect(b, SIGNAL("clicked()"), self.createTable)
 		
 		self.connect(self.chkGeomColumn, SIGNAL("clicked()"), self.updateUi)
 		
+		self.populateSchemas()
+		
 		self.updateUi()
+		
+		
+	def populateSchemas(self):
+		
+		if not self.db:
+			return
+		
+		schemas = self.db.list_schemas()
+		self.cboSchema.clear()
+		for schema in schemas:
+			self.cboSchema.addItem(schema[0])
+		
 		
 	def updateUi(self):
 		useGeom = self.chkGeomColumn.isChecked()
@@ -104,9 +124,11 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 		
 		indexName = m.index(newRow,0,QModelIndex())
 		indexType = m.index(newRow,1,QModelIndex())
+		indexNull = m.index(newRow,2,QModelIndex())
 		
-		m.setData(indexName, QVariant("new field"))
+		m.setData(indexName, QVariant("new_field"))
 		m.setData(indexType, QVariant("integer"))
+		m.setData(indexNull, QVariant(False))
 		
 		# selects the new row
 		sel = self.fields.selectionModel()
@@ -123,12 +145,22 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 			QMessageBox.information(self, "sorry", "no field selected")
 		else:
 			self.fields.model().removeRows(sel[0].row(),1)
+			
+	def fieldUp(self):
+		""" TODO: move selected field up """
+		pass
 
+	def fieldDown(self):
+		""" TODO: move selected field down """
+		pass
+	
 	def createTable(self):
 		""" create table with chosen fields, optionally add a geometry column """
 		
-		# TODO: schema
-		schema = 'public'
+		schema = str(self.cboSchema.currentText())
+		if len(schema) == 0:
+			QMessageBox.information(self, "sorry", "select scheme!")
+			return
 		
 		table = str(self.editName.text())
 		if len(table) == 0:
@@ -154,7 +186,9 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 		for row in xrange(m.rowCount()):
 			fldName = str(m.data(m.index(row,0,QModelIndex())).toString())
 			fldType = str(m.data(m.index(row,1,QModelIndex())).toString())
-			flds.append( (fldName, fldType) )
+			fldNull = m.data(m.index(row,2,QModelIndex())).toBool()
+			
+			flds.append( postgis_utils.TableField(fldName, fldType, fldNull) )
 				
 		if self.db:
 			
@@ -166,7 +200,7 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 					if useSpatialIndex:
 						self.db.create_spatial_index(table, schema, geomColumn)
 				self.emit(SIGNAL("databaseChanged()"))
-			except DbError, e:
+			except postgis_utils.DbError, e:
 				self.db.con.rollback()
 				QMessageBox.critical(self, "DB error", e.message+"\nSQL query:\n"+e.query)
 				return

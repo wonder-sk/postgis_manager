@@ -17,6 +17,15 @@ class DbError(Exception):
 		self.message = message
 		self.query = query
 
+class TableField:
+	def __init__(self, name, data_type, is_null=None, default=None):
+		self.name, self.data_type, self.is_null, self.default = name, data_type, is_null, default
+		
+	def is_null_txt(self):
+		if self.is_null:
+			return "NULL"
+		else:
+			return "NOT NULL"
 
 class GeoDB:
 	
@@ -158,16 +167,16 @@ class GeoDB:
 		
 	def create_table(self, table, fields, schema='public'):
 		""" create ordinary table
-				'fields' is array containing tuples (name, type) """
+				'fields' is array containing instances of TableField """
 		# TODO: primary key?
 				
 		if len(fields) == 0:
 			return False
 		
 		c = self.con.cursor()
-		sql = "CREATE TABLE %s (%s %s" % (table, fields[0][0], fields[0][1])
-		for (fldName, fldType) in fields[1:]:
-			sql += ", %s %s" % (fldName, fldType)
+		sql = "CREATE TABLE %s (%s %s %s" % (table, fields[0].name, fields[0].data_type, fields[0].is_null_txt())
+		for field in fields[1:]:
+			sql += ", %s %s %s" % (field.name, field.data_type, field.is_null_txt())
 		sql += ")"
 		self._exec_sql(c, sql)
 		self.con.commit()
