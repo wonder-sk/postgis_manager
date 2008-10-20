@@ -2,5 +2,6 @@
     <qresource >
         <file>icons/table.xpm</file>
         <file>icons/namespace.xpm</file>
+        <file>icons/view.xpm</file>
     </qresource>
 </RCC>

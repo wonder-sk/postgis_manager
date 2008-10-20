@@ -106,7 +106,8 @@ class GeoDB:
 			schema_where = " AND nspname NOT IN ('information_schema','pg_catalog') "
 			
 		# TODO: geometry_columns relation may not exist!
-		# TODO: list empty schemas!
+		# TODO: list owner!
+		# TODO: list row count
 		
 		# LEFT OUTER JOIN: zmena oproti LEFT JOIN ze ak moze spojit viackrat tak to urobi
 		sql = "SELECT relname, nspname, relkind, geometry_columns.f_geometry_column, geometry_columns.type FROM pg_class " \
@@ -246,8 +247,8 @@ if __name__ == '__main__':
 	#for fld in db.get_table_metadata('trencin'):
 	#	print fld
 	
-	try:
-		db.create_table('trrrr', [('id','serial'), ('test','text')])
-	except DbError, e:
-		print e.message, e.query
+	#try:
+	#	db.create_table('trrrr', [('id','serial'), ('test','text')])
+	#except DbError, e:
+	#	print e.message, e.query
 	

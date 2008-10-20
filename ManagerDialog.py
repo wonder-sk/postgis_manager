@@ -78,13 +78,14 @@ class SchemaItem(TreeItem):
 
 class TableItem(TreeItem):
 	
-	def __init__(self, name, geom_type, parent):
+	def __init__(self, name, geom_type, is_view, parent):
 		TreeItem.__init__(self, parent)
-		self.name, self.geom_type = name, geom_type
+		self.name, self.geom_type, self.is_view = name, geom_type, is_view
 		
 		# load (shared) icon with first instance of table item
 		if not hasattr(TableItem, 'tableIcon'):
 			TableItem.tableIcon = QIcon(":/icons/table.xpm")
+			TableItem.viewIcon = QIcon(":/icons/view.xpm")
 		
 	def data(self, column):
 		if column == 0:
@@ -95,15 +96,18 @@ class TableItem(TreeItem):
 			return None
 		
 	def icon(self):
-		return self.tableIcon
+		if self.is_view:
+			return self.viewIcon
+		else:
+			return self.tableIcon
 
 def new_tree():
 	
 	rootItem = TreeItem(['tables'], None)
 	sPublic = SchemaItem('public', rootItem)
 	sG = SchemaItem('gis', rootItem)
-	t1 = TableItem('roads', 'LINESTRING', sPublic)
-	t2 = TableItem('sidla', 'POINT', sG)
+	t1 = TableItem('roads', 'LINESTRING', False, sPublic)
+	t2 = TableItem('sidla', 'POINT', False, sG)
 	return rootItem
 
 
@@ -260,13 +264,14 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		
 		for tbl in tbls:
 			tablename, schema, reltype, geom_col, geom_type = tbl
+			is_view = (reltype == 'v')
 			
 			# add schema if doesn't exist
 			if not schemas.has_key(schema):
 				print "AAAA!!"
 				continue
 			
-			tableItem = TableItem(tablename, geom_type, schemas[schema])
+			tableItem = TableItem(tablename, geom_type, is_view, schemas[schema])
 		return rootItem
 		
 	def refreshTable(self):
@@ -281,7 +286,11 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		if isinstance(item, SchemaItem):
 			html = "<h1>%s</h1> (schema)<p>tables: %d" % (item.name, item.childCount())
 		elif isinstance(item, TableItem):
-			html = "<h1>%s</h1> (table)<p>geometry: %s" % (item.name, item.geom_type)
+			if item.is_view:
+				reltype = "View"
+			else:
+				reltype = "Table"
+			html = "<h1>%s</h1> (%s)<p>geometry: %s" % (item.name, reltype, item.geom_type)
 			html += "<table><tr><th>#<th>Name<th>Type<th>Null"
 			for fld in self.db.get_table_fields(item.name):
 				if fld.notnull: is_null_txt = "N"
