@@ -58,9 +58,10 @@ class DatabaseItem(TreeItem):
 
 	
 class SchemaItem(TreeItem):
-	def __init__(self, name, parent):
+	def __init__(self, name, owner, parent):
 		TreeItem.__init__(self, parent)
 		self.name = name
+		self.owner = owner
 		
 		# load (shared) icon with first instance of schema item
 		if not hasattr(SchemaItem, 'schemaIcon'):
@@ -78,9 +79,9 @@ class SchemaItem(TreeItem):
 
 class TableItem(TreeItem):
 	
-	def __init__(self, name, geom_type, is_view, parent):
+	def __init__(self, name, owner, row_count, page_count, is_view, geom_type, parent):
 		TreeItem.__init__(self, parent)
-		self.name, self.geom_type, self.is_view = name, geom_type, is_view
+		self.name, self.owner, self.row_count, self.page_count, self.geom_type, self.is_view = name, owner, row_count, page_count, geom_type, is_view
 		
 		# load (shared) icon with first instance of table item
 		if not hasattr(TableItem, 'tableIcon'):
@@ -103,11 +104,11 @@ class TableItem(TreeItem):
 
 def new_tree():
 	
-	rootItem = TreeItem(['tables'], None)
-	sPublic = SchemaItem('public', rootItem)
-	sG = SchemaItem('gis', rootItem)
-	t1 = TableItem('roads', 'LINESTRING', False, sPublic)
-	t2 = TableItem('sidla', 'POINT', False, sG)
+	rootItem = DatabaseItem()
+	sPublic = SchemaItem('public', 'ozefo', rootItem)
+	sG = SchemaItem('gis', 'ozefo', rootItem)
+	t1 = TableItem('roads', 'ozefo', 123, 4, 'LINESTRING', False, sPublic)
+	t2 = TableItem('sidla', 'ozefo', 66, 2, 'POINT', False, sG)
 	return rootItem
 
 
@@ -259,11 +260,11 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		
 		# add all schemas
 		for schema in self.db.list_schemas():
-			schema_name = schema[0]
-			schemas[schema_name] = SchemaItem(schema_name, rootItem)
+			schema_oid, schema_name, schema_owner, schema_perms = schema
+			schemas[schema_name] = SchemaItem(schema_name, schema_owner, rootItem)
 		
 		for tbl in tbls:
-			tablename, schema, reltype, geom_col, geom_type = tbl
+			tablename, schema, reltype, relowner, row_count, page_count, geom_col, geom_type = tbl
 			is_view = (reltype == 'v')
 			
 			# add schema if doesn't exist
@@ -271,7 +272,7 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 				print "AAAA!!"
 				continue
 			
-			tableItem = TableItem(tablename, geom_type, is_view, schemas[schema])
+			tableItem = TableItem(tablename, relowner, row_count, page_count, is_view, geom_type, schemas[schema])
 		return rootItem
 		
 	def refreshTable(self):
@@ -284,13 +285,13 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		item = index.internalPointer()
 		
 		if isinstance(item, SchemaItem):
-			html = "<h1>%s</h1> (schema)<p>tables: %d" % (item.name, item.childCount())
+			html = "<h1>%s</h1> (schema)<p>Tables: %d<br>Owner: %s" % (item.name, item.childCount(), item.owner)
 		elif isinstance(item, TableItem):
 			if item.is_view:
 				reltype = "View"
 			else:
 				reltype = "Table"
-			html = "<h1>%s</h1> (%s)<p>geometry: %s" % (item.name, reltype, item.geom_type)
+			html = "<h1>%s</h1> (%s)<br>Owner: %s<br>Rows (estimation): %d<br>Pages: %d<p>Geometry: %s" % (item.name, reltype, item.owner, item.row_count, item.page_count, item.geom_type)
 			html += "<table><tr><th>#<th>Name<th>Type<th>Null"
 			for fld in self.db.get_table_fields(item.name):
 				if fld.notnull: is_null_txt = "N"

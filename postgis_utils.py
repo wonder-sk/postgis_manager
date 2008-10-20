@@ -46,20 +46,13 @@ class GeoDB:
 		self.passwd = passwd
 	
 	def list_schemas(self):
+		"""
+			get list of schemas in tuples: (oid, name, owner, perms)
+		"""
 		c = self.con.cursor()
-		sql = "SELECT * FROM pg_namespace"
+		sql = "SELECT oid, nspname, pg_get_userbyid(nspowner), nspacl FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname != 'information_schema'"
 		self._exec_sql(c, sql)
-		
-		schemas = []
-		
-		row = c.fetchone()
-		while row:
-			schema = row[0]
-			if schema[0:3] != 'pg_' and schema != 'information_schema':
-				schemas.append(row)
-			row = c.fetchone()
-			
-		return schemas
+		return c.fetchall()
 			
 	def list_geotables(self, schema=None):
 		"""
@@ -106,11 +99,9 @@ class GeoDB:
 			schema_where = " AND nspname NOT IN ('information_schema','pg_catalog') "
 			
 		# TODO: geometry_columns relation may not exist!
-		# TODO: list owner!
-		# TODO: list row count
 		
 		# LEFT OUTER JOIN: zmena oproti LEFT JOIN ze ak moze spojit viackrat tak to urobi
-		sql = "SELECT relname, nspname, relkind, geometry_columns.f_geometry_column, geometry_columns.type FROM pg_class " \
+		sql = "SELECT relname, nspname, relkind, pg_get_userbyid(relowner), reltuples, relpages, geometry_columns.f_geometry_column, geometry_columns.type FROM pg_class " \
 		      "  JOIN pg_namespace ON relnamespace=pg_namespace.oid " \
 		      "  LEFT OUTER JOIN geometry_columns ON relname=f_table_name AND nspname=f_table_schema " \
 		      "WHERE (relkind = 'r' or relkind='v') " + schema_where + \
@@ -122,7 +113,7 @@ class GeoDB:
 		"""
 			get as much metadata as possible about the table:
 			- fields and their types
-			- row count
+			- (real) row count
 			- indices (spatial + classical)
 			
 			more (constraints, triggers, functions):
