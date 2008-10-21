@@ -30,20 +30,23 @@ class TableField:
 class GeoDB:
 	
 	def __init__(self, host=None, port=None, dbname=None, user=None, passwd=None):
-		con_str = ''
-		if host:   con_str += "host='%s' " % host
-		if port:   con_str += "port=%d " % port
-		if dbname: con_str += "dbname='%s' " % dbname
-		if user:   con_str += "user='%s' " % user
-		if passwd: con_str += "password='%s' " % passwd
-		
-		self.con = psycopg2.connect(con_str)
 		
 		self.host = host
 		self.port = port
 		self.dbname = dbname
 		self.user = user
 		self.passwd = passwd
+		
+		self.con = psycopg2.connect(self.con_info())
+		
+	def con_info(self):
+		con_str = ''
+		if self.host:   con_str += "host='%s' "     % self.host
+		if self.port:   con_str += "port=%d "       % self.port
+		if self.dbname: con_str += "dbname='%s' "   % self.dbname
+		if self.user:   con_str += "user='%s' "     % self.user
+		if self.passwd: con_str += "password='%s' " % self.passwd
+		return con_str
 	
 	def list_schemas(self):
 		"""

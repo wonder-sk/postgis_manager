@@ -3,241 +3,27 @@ from ManagerDialog_ui import Ui_ManagerDialog
 from DlgCreateTable import DlgCreateTable
 from DlgLoadData import DlgLoadData
 from DlgDumpData import DlgDumpData
+from DatabaseModel import TableItem, SchemaItem, DatabaseModel
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-import sys
-
 import postgis_utils
 import resources
-
-class TreeItem:
-	
-	def __init__(self, parent):
-		self.parentItem = parent
-		self.childItems = []
-		
-		if parent:
-			parent.appendChild(self)
-			
-	def appendChild(self, child):
-		self.childItems.append(child)
-	
-	def child(self, row):
-		return self.childItems[row]
-	
-	def childCount(self):
-		return len(self.childItems)
-	
-	def row(self):
-		
-		if self.parentItem:
-			items = self.parentItem.childItems
-			for (row,item) in enumerate(items):
-				if item is self:
-					return row
-			print "CHYBAA", self, items
-			
-		return 0
-	
-	def parent(self):
-		return self.parentItem
-	
-	def icon(self):
-		return None
-
-
-
-class DatabaseItem(TreeItem):
-	def __init__(self, parent=None):
-		TreeItem.__init__(self, parent)
-	
-	def data(self, column):
-		return None
-
-	
-class SchemaItem(TreeItem):
-	def __init__(self, name, owner, parent):
-		TreeItem.__init__(self, parent)
-		self.name = name
-		self.owner = owner
-		
-		# load (shared) icon with first instance of schema item
-		if not hasattr(SchemaItem, 'schemaIcon'):
-			SchemaItem.schemaIcon = QIcon(":/icons/namespace.xpm")
-	
-	def data(self, column):
-		if column == 0:
-			return self.name
-		else:
-			return None
-	
-	def icon(self):
-		return self.schemaIcon
-
-
-class TableItem(TreeItem):
-	
-	def __init__(self, name, owner, row_count, page_count, is_view, geom_type, parent):
-		TreeItem.__init__(self, parent)
-		self.name, self.owner, self.row_count, self.page_count, self.geom_type, self.is_view = name, owner, row_count, page_count, geom_type, is_view
-		
-		# load (shared) icon with first instance of table item
-		if not hasattr(TableItem, 'tableIcon'):
-			TableItem.tableIcon = QIcon(":/icons/table.xpm")
-			TableItem.viewIcon = QIcon(":/icons/view.xpm")
-		
-	def data(self, column):
-		if column == 0:
-			return self.name
-		elif column == 1:
-			return self.geom_type
-		else:
-			return None
-		
-	def icon(self):
-		if self.is_view:
-			return self.viewIcon
-		else:
-			return self.tableIcon
-
-def new_tree():
-	
-	rootItem = DatabaseItem()
-	sPublic = SchemaItem('public', 'ozefo', rootItem)
-	sG = SchemaItem('gis', 'ozefo', rootItem)
-	t1 = TableItem('roads', 'ozefo', 123, 4, 'LINESTRING', False, sPublic)
-	t2 = TableItem('sidla', 'ozefo', 66, 2, 'POINT', False, sG)
-	return rootItem
-
-
-
-class TreeModel(QAbstractItemModel):
-	
-	def __init__(self, tree, parent=None, db=None):
-		QAbstractItemModel.__init__(self, parent)
-		self.tree = tree
-		self.db = db
-		self.header = ['Table', 'Geometry']
-		
-	def columnCount(self, parent):
-		return 2
-		
-	def data(self, index, role):
-		if not index.isValid():
-			return QVariant()
-		
-		if role == Qt.DecorationRole and index.column() == 0:
-			icon = index.internalPointer().icon()
-			if icon: return QVariant(icon)
-			
-		if role != Qt.DisplayRole and role != Qt.EditRole:
-			return QVariant()
-		
-		retval = index.internalPointer().data(index.column())
-		if retval:
-			return QVariant(retval)
-		else:
-			return QVariant()
-	
-	def flags(self, index):
-		if not index.isValid():
-			return 0
-		
-		flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable 
-		if index.column() == 0:
-			flags |= Qt.ItemIsEditable
-		return flags
-	
-	def headerData(self, section, orientation, role):
-		if orientation == Qt.Horizontal and role == Qt.DisplayRole and section < len(self.header):
-			return QVariant(self.header[section])
-		return QVariant()
-
-	def index(self, row, column, parent):
-		if not self.hasIndex(row, column, parent):
-			return QModelIndex()
-		
-		if not parent.isValid():
-			parentItem = self.tree
-		else:
-			parentItem = parent.internalPointer()
-		
-		childItem = parentItem.child(row)
-		if childItem:
-			return self.createIndex(row, column, childItem)
-		else:
-			return QModelIndex()
-
-	def parent(self, index):
-		if not index.isValid():
-			return QModelIndex()
-		
-		childItem = index.internalPointer()
-		parentItem = childItem.parent()
-		
-		if parentItem == self.tree:
-			return QModelIndex()
-		
-		return self.createIndex(parentItem.row(), 0, parentItem)
-
-	def rowCount(self, parent):
-		if parent.column() > 0:
-			return 0
-		
-		if not parent.isValid():
-			parentItem = self.tree
-		else:
-			parentItem = parent.internalPointer()
-			
-		return parentItem.childCount()
-
-	def setData(self, index, value, role):
-		if role != Qt.EditRole or index.column() != 0:
-			return False
-			
-		item = index.internalPointer()
-		new_name = str(value.toString())
-		if isinstance(item, TableItem):
-			# rename table or view
-			try:
-				schema = item.parentItem.name
-				self.db.rename_table(item.name, new_name, schema)
-				self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex &)'), index, index)
-				return True
-			except postgis_utils.DbError, e:
-				QMessageBox.critical(None, "error", "Couldn't rename:\nMessage: %s\nQuery: %s" % (e.message, e.query) )
-				return False
-			
-		elif isinstance(item, SchemaItem):
-			# rename schema
-			try:
-				self.db.rename_schema(item.name, new_name)
-				self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex &)'), index, index)
-				return True
-			except postgis_utils.DbError, e:
-				QMessageBox.critical(None, "error", "Couldn't rename schema:\nMessage: %s\nQuery: %s" % (e.message, e.query) )
-				return False
-			
-		else:
-			print "set", str(value.toString()), role
-			return False
 
 
 
 class ManagerDialog(QDialog, Ui_ManagerDialog):
 	
-	def __init__(self, parent=None):
+	def __init__(self, db, parent=None):
 		QDialog.__init__(self, parent)
 		
 		self.setupUi(self)
 		
-		self.db = postgis_utils.GeoDB(host='localhost',dbname='gis',user='gisak',passwd='g')
+		self.db = db
 		
-		rootItem = self.loadTreeItems()
-		self.treeModel = TreeModel(rootItem, self, self.db)
-		self.tree.setModel(self.treeModel)
+		self.dbModel = DatabaseModel(self, self.db)
+		self.tree.setModel(self.dbModel)
 		
 		self.tree.expandAll()
 		self.tree.resizeColumnToContents(0)
@@ -252,31 +38,9 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		self.connect(self.btnDumpData, SIGNAL("clicked()"), self.dumpData)
 		
 		
-	def loadTreeItems(self):
-		tbls = self.db.list_geotables()
-		rootItem = DatabaseItem()
-		
-		schemas = {} # name : item
-		
-		# add all schemas
-		for schema in self.db.list_schemas():
-			schema_oid, schema_name, schema_owner, schema_perms = schema
-			schemas[schema_name] = SchemaItem(schema_name, schema_owner, rootItem)
-		
-		for tbl in tbls:
-			tablename, schema, reltype, relowner, row_count, page_count, geom_col, geom_type = tbl
-			is_view = (reltype == 'v')
-			
-			# add schema if doesn't exist
-			if not schemas.has_key(schema):
-				print "AAAA!!"
-				continue
-			
-			tableItem = TableItem(tablename, relowner, row_count, page_count, is_view, geom_type, schemas[schema])
-		return rootItem
 		
 	def refreshTable(self):
-		self.tree.model().tree = self.loadTreeItems()
+		self.tree.model().loadFromDb()
 		self.tree.model().reset()
 		self.tree.expandAll()
 		
@@ -378,12 +142,3 @@ class ManagerDialog(QDialog, Ui_ManagerDialog):
 		dlg = DlgDumpData(self, self.db)
 		dlg.exec_()
 
-
-app = QApplication(sys.argv)
-
-dlg = ManagerDialog()
-dlg.show()
-
-retval = app.exec_()
-
-sys.exit(retval)

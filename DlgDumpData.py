@@ -38,7 +38,7 @@ class DlgDumpData(QDialog, Ui_DlgDumpData):
 		schemas = self.db.list_schemas()
 		self.cboSchema.clear()
 		for schema in schemas:
-			self.cboSchema.addItem(schema[0])
+			self.cboSchema.addItem(schema[1])
 			
 	def populateTables(self):
 		
