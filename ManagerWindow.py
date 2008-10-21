@@ -95,6 +95,11 @@ class ManagerWindow(QMainWindow):
 				qgis.core.QgsMapLayerRegistry.instance().addMapLayer(vl)
 				self.preview.setLayerSet( [ qgis.gui.QgsMapCanvasLayer(vl, True, False) ] )
 				self.preview.zoomToFullExtent()
+				
+				from PreviewTableModel import PreviewTableModel
+				tableModel = PreviewTableModel(vl, self)
+				self.table.setModel(tableModel)
+				
 				# TODO: remove old layer?
 		else:
 			self.preview.setLayerSet( [] )
@@ -187,6 +192,7 @@ class ManagerWindow(QMainWindow):
 		
 		if self.useQgis:
 			self.table = QTableView()
+			
 			self.preview = qgis.gui.QgsMapCanvas()
 			self.preview.setCanvasColor(QColor(255,255,255))
 		
@@ -199,6 +205,7 @@ class ManagerWindow(QMainWindow):
 		self.setCentralWidget(self.tabs)
 
 		self.tree = QTreeView()
+		self.tree.setRootIsDecorated(False)
 		self.dock = QDockWidget("Database view", self)
 		self.dock.setFeatures(QDockWidget.DockWidgetMovable)
 		self.dock.setWidget(self.tree)
