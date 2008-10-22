@@ -45,12 +45,22 @@ def main():
 		print "  (setting PYTHONPATH and/or LD_LIBRARY_PATH might help)"
 		sys.exit(1)
 	
+	# add testing entry
+	settings = QSettings()
+	key = "/PostgreSQL/connections/test DB"
+	settings.setValue(key + "/host", QVariant("localhost"))
+	settings.setValue(key + "/port", QVariant(5432))
+	settings.setValue(key + "/database", QVariant("gis"))
+	settings.setValue(key + "/username", QVariant("gisak"))
+	settings.setValue(key + "/password", QVariant("g"))
+	settings.setValue("/PostgreSQL/connections/selected", QVariant("test DB"))
+	
 	app = QApplication(sys.argv)
 	
-	db = postgis_utils.GeoDB(host='localhost',dbname='gis',user='gisak',passwd='g')
+	#db = postgis_utils.GeoDB(host='localhost',dbname='gis',user='gisak',passwd='g')
 	
 	from ManagerWindow import ManagerWindow
-	dlg = ManagerWindow(db, use_qgis)
+	dlg = ManagerWindow(use_qgis)
 	dlg.show()
 	
 	retval = app.exec_()

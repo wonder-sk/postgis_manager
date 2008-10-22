@@ -30,7 +30,5 @@ class ManagerPlugin:
 	
 	def run(self): 
 		
-		db = postgis_utils.GeoDB(host='localhost',dbname='gis',user='gisak',passwd='g')
-		
-		self.dlg = ManagerWindow(db, True)
+		self.dlg = ManagerWindow(True)
 		self.dlg.show()
