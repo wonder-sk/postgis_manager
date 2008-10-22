@@ -3,5 +3,6 @@
         <file>icons/table.xpm</file>
         <file>icons/namespace.xpm</file>
         <file>icons/view.xpm</file>
+				<file>icons/postgis_elephant.png</file>
     </qresource>
 </RCC>

@@ -24,6 +24,7 @@ class ManagerWindow(QMainWindow):
 		
 		self.db = db
 		self.useQgis = use_qgis
+		self.currentLayerId = None
 		
 		self.setupUi()
 		
@@ -88,11 +89,11 @@ class ManagerWindow(QMainWindow):
 			con = self.db.con_info() + " table=%s (%s) sql=" % (item.name, item.geom_column)
 			vl = qgis.core.QgsVectorLayer(con, "test", "postgres")
 			if not vl.isValid():
-				new_vl = None
+				newLayerId = None
 				self.preview.setLayerSet( [] )
 			else:
-				new_vl = vl
-				qgis.core.QgsMapLayerRegistry.instance().addMapLayer(vl)
+				newLayerId = vl.getLayerID()
+				qgis.core.QgsMapLayerRegistry.instance().addMapLayer(vl, False)
 				self.preview.setLayerSet( [ qgis.gui.QgsMapCanvasLayer(vl, True, False) ] )
 				self.preview.zoomToFullExtent()
 				
@@ -100,9 +101,14 @@ class ManagerWindow(QMainWindow):
 				tableModel = PreviewTableModel(vl, self)
 				self.table.setModel(tableModel)
 				
-				# TODO: remove old layer?
 		else:
+			newLayerId = None
 			self.preview.setLayerSet( [] )
+			
+		# remove old layer (if any) and set new
+		if self.currentLayerId:
+			qgis.core.QgsMapLayerRegistry.instance().removeMapLayer(self.currentLayerId, False)
+		self.currentLayerId = newLayerId
 			
 
 
@@ -186,6 +192,7 @@ class ManagerWindow(QMainWindow):
 	def setupUi(self):
 		
 		self.setWindowTitle("PostGIS Manager")
+		self.setWindowIcon(QIcon(":/icons/postgis_elephant.png"))
 		self.resize(QSize(700,500).expandedTo(self.minimumSizeHint()))
 		
 		self.txtMetadata = QTextBrowser()
