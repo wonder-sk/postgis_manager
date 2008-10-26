@@ -3,6 +3,11 @@ PostGIS Manager
 
 Copyright 2008 Martin Dobias
 licensed under the terms of GNU GPL v2
+
+
+Good resource for metadata extraction:
+http://www.alberton.info/postgresql_meta_info.html
+
 """
 
 import psycopg2
@@ -11,6 +16,31 @@ import psycopg2
 class TableAttribute:
 	def __init__(self, row):
 		self.num, self.name, self.data_type, self.char_max_len, self.modifier, self.notnull, self.hasdefault = row
+
+
+class TableConstraint:
+	""" class that represents a constraint of a table (relation) """
+	
+	TypeCheck, TypeForeignKey, TypePrimaryKey, TypeUnique = range(4)
+	types = { "c" : TypeCheck, "f" : TypeForeignKey, "p" : TypePrimaryKey, "u" : TypeUnique }
+	
+	on_action = { "a" : "NO ACTION", "r" : "RESTRICT", "c" : "CASCADE", "n" : "SET NULL", "d" : "SET DEFAULT" }
+	match_types = { "u" : "UNSPECIFIED", "f" : "FULL", "p" : "PARTIAL" }
+	
+	def __init__(self, row):
+		self.name, con_type, self.is_defferable, self.is_deffered, self.keys = row[:5]
+		
+		self.con_type = TableConstraint.types[con_type]   # convert to enum
+		if self.con_type == TableConstraint.TypeCheck:
+			self.check_src = row[5]
+		elif self.con_type == TableConstraint.TypeForeignKey:
+			self.foreign_table = row[6]
+			self.foreign_on_update = TableConstraint.on_action[row[7]]
+			self.foreign_on_delete = TableConstraint.on_action[row[8]]
+			self.foreign_match_type = TableConstraint.match_types[row[9]]
+			self.foreign_keys = row[10]
+
+
 
 class DbError(Exception):
 	def __init__(self, message, query=None):
@@ -26,6 +56,7 @@ class TableField:
 			return "NULL"
 		else:
 			return "NOT NULL"
+		
 
 class GeoDB:
 	
@@ -115,19 +146,15 @@ class GeoDB:
 		self._exec_sql(c, sql)
 		return c.fetchall()
 			
-	def get_table_metadata(self, table, schema='public'):
-		"""
-			get as much metadata as possible about the table:
-			- fields and their types
-			- (real) row count
-			- indices (spatial + classical)
-			
-			more (constraints, triggers, functions):
-			http://www.alberton.info/postgresql_meta_info.html
-		"""
-		pass
+	
+	def get_table_rows(self, table, schema='public'):
+		c = self.con.cursor()
+		self._exec_sql(c, "SELECT COUNT(*) FROM %s" % self._table_name(schema, table))
+		return c.fetchone()[0]
+		
 		
 	def get_table_fields(self, table, schema='public'):
+		# TODO: schema
 		c = self.con.cursor()
 		sql = """SELECT a.attnum AS ordinal_position,
 				a.attname AS column_name,
@@ -148,6 +175,34 @@ class GeoDB:
 		for row in c.fetchall():
 			attrs.append(TableAttribute(row))
 		return attrs
+		
+		
+	def get_table_indexes(self, table, schema='public'):
+		""" get info about table's indexes. ignore primary key and unique index, they get listed in constaints """
+		# TODO: schema
+		c = self.con.cursor()
+		sql = """SELECT relname, indkey FROM pg_class, pg_index WHERE pg_class.oid = pg_index.indexrelid AND pg_class.oid IN ( SELECT indexrelid FROM pg_index, pg_class WHERE pg_class.relname='%s' AND pg_class.oid=pg_index.indrelid AND indisunique != 't' AND indisprimary != 't' )""" % table
+		self._exec_sql(c, sql)
+		return c.fetchall()
+	
+	
+	def get_table_constraints(self, table, schema='public'):
+		# TODO: schema
+		c = self.con.cursor()
+		
+		sql = """SELECT c.conname, c.contype, c.condeferrable, c.condeferred, array_to_string(c.conkey, ' '), c.consrc,
+		         t2.relname, c.confupdtype, c.confdeltype, c.confmatchtype, array_to_string(c.confkey, ' ') FROM pg_constraint c
+		  LEFT JOIN pg_class t ON c.conrelid = t.oid
+			LEFT JOIN pg_class t2 ON c.confrelid = t2.oid
+			WHERE t.relname = '%s'""" % table
+		
+		self._exec_sql(c, sql)
+		
+		constrs = []
+		for row in c.fetchall():
+			constrs.append(TableConstraint(row))
+		return constrs
+		
 		
 	"""
 	def list_tables(self):
@@ -274,7 +329,19 @@ if __name__ == '__main__':
 		print row
 
 	print '=========='
+	
+	for row in db.get_table_indexes('trencin'):
+		print row
 
+	print '=========='
+	
+	for row in db.get_table_constraints('trencin'):
+		print row
+	
+	print '=========='
+	
+	print db.get_table_rows('trencin')
+	
 	#for fld in db.get_table_metadata('trencin'):
 	#	print fld
 	

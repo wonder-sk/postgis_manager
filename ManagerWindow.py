@@ -159,13 +159,39 @@ class ManagerWindow(QMainWindow):
 		else:
 			reltype = "Table"
 		html = "<h1>%s</h1> (%s)<br>Owner: %s<br>Rows (estimation): %d<br>Pages: %d<p>Geometry: %s" % (item.name, reltype, item.owner, item.row_count, item.page_count, item.geom_type)
-		html += "<table><tr><th>#<th>Name<th>Type<th>Null"
+		
+		# fields
+		html += "<h3>Fields</h3><table><tr><th>#<th>Name<th>Type<th>Null"
 		for fld in self.db.get_table_fields(item.name):
 			if fld.notnull: is_null_txt = "N"
 			else: is_null_txt = "Y"
 			html += "<tr><td>%s<td>%s<td>%s<td>%s" % (fld.num, fld.name, fld.data_type, is_null_txt)
 		html += "</table>"
+		
+		# constraints
+		constraints = self.db.get_table_constraints(item.name)
+		if len(constraints) != 0:
+			html += "<h3>Constraints</h3>"
+			html += "<table><tr><th>Name<th>Type<th>Attributes"		
+			for con in constraints:
+				if   con.con_type == postgis_utils.TableConstraint.TypeCheck:      con_type = "Check"
+				elif con.con_type == postgis_utils.TableConstraint.TypePrimaryKey: con_type = "Primary key"
+				elif con.con_type == postgis_utils.TableConstraint.TypeForeignKey: con_type = "Foreign key"
+				elif con.con_type == postgis_utils.TableConstraint.TypeUnique:     con_type = "Unique"
+				html += "<tr><td>%s<td>%s<td>%s" % (con.name, con_type, con.keys)
+			html += "</table>"
+		
+		# indexes
+		indexes = self.db.get_table_indexes(item.name)
+		if len(indexes) != 0:
+			html += "<h3>Indexes</h3>"
+			html += "<table><tr><th>Name<th>Attributes"
+			for fld in indexes:
+				html += "<tr><td>%s<td>%s" % (fld[0], fld[1])
+			html += "</table>"
+		
 		self.txtMetadata.setHtml(html)
+		
 		
 	def loadTablePreview(self, item):
 		""" if has geometry column load to map canvas """
