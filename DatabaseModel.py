@@ -55,15 +55,27 @@ class DatabaseItem(TreeItem):
 		if not db:
 			return
 		
+		try:
+			list_schemas = db.list_schemas()
+		except postgis_utils.DbError, e:
+			QMessageBox.critical(None, "error", "couldn't get schemas.\n"+e.message)
+			return
+		
 		schemas = {} # name : item
 		
 		# add all schemas
-		for schema in db.list_schemas():
+		for schema in list_schemas:
 			schema_oid, schema_name, schema_owner, schema_perms = schema
 			schemas[schema_name] = SchemaItem(schema_name, schema_owner, self)
+			
+		try:
+			list_tables = db.list_geotables()
+		except postgis_utils.DbError, e:
+			QMessageBox.critical(None, "error", "couldn't get list of tables.\n"+e.message)
+			return
 		
 		# add all tables
-		for tbl in db.list_geotables():
+		for tbl in list_tables:
 			tablename, schema, reltype, relowner, row_count, page_count, geom_col, geom_type = tbl
 			is_view = (reltype == 'v')
 			tableItem = TableItem(tablename, relowner, row_count, page_count, is_view, geom_type, geom_col, schemas[schema])
