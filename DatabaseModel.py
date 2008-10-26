@@ -52,6 +52,9 @@ class DatabaseItem(TreeItem):
 	def constructTreeFromDb(self, db):
 		""" creates a tree of schemas and tables from current DB connection """
 		
+		if not db:
+			return
+		
 		schemas = {} # name : item
 		
 		# add all schemas
@@ -125,14 +128,14 @@ def new_tree():
 
 class DatabaseModel(QAbstractItemModel):
 	
-	def __init__(self, parent=None, db=None):
+	def __init__(self, parent=None):
 		QAbstractItemModel.__init__(self, parent)
-		self.db = db
 		self.header = ['Table', 'Geometry']
 		
-		self.loadFromDb()
+		self.tree = DatabaseItem()
 		
-	def loadFromDb(self):
+	def loadFromDb(self, db):
+		self.db = db
 		self.tree = DatabaseItem()
 		self.tree.constructTreeFromDb(self.db)
 

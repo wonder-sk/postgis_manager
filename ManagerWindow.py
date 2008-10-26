@@ -23,20 +23,20 @@ class ManagerWindow(QMainWindow):
 	def __init__(self, use_qgis=False, parent=None):
 		QMainWindow.__init__(self, parent)
 		
-		self.listDatabases()
+		self.useQgis = use_qgis
+		self.currentLayerId = None
+		self.db = None
+		
+		self.setupUi()
+		
+		self.dbModel = DatabaseModel(self)
+		self.tree.setModel(self.dbModel)
 		
 		# connect to database selected last time
 		settings = QSettings()
 		sel = str(settings.value("/PostgreSQL/connections/selected").toString())
 		self.dbConnect(sel)
 		
-		self.useQgis = use_qgis
-		self.currentLayerId = None
-		
-		self.setupUi()
-		
-		self.dbModel = DatabaseModel(self, self.db)
-		self.tree.setModel(self.dbModel)
 		
 		self.tree.expandAll()
 		self.tree.resizeColumnToContents(0)
@@ -56,17 +56,18 @@ class ManagerWindow(QMainWindow):
 		
 		
 	def listDatabases(self):
-		self.actionsDb = {}
+		
+		actionsDb = {}
 		settings = QSettings()
 		settings.beginGroup("/PostgreSQL/connections")
 		keys = settings.childGroups()
 		
 		for key in keys:
-			a = QAction(key, self)
-			self.connect(a, SIGNAL("triggered(bool)"), self.dbConnectSlot)
-			self.actionsDb[str(key)] = a
+			actionsDb[str(key)] = QAction(key, self)
 			
 		settings.endGroup()
+		
+		return actionsDb
 	
 		
 	def dbConnectSlot(self):
@@ -76,6 +77,12 @@ class ManagerWindow(QMainWindow):
 		
 
 	def dbConnect(self, selected):
+		
+		# if there's open database already, get rid of it
+		if self.db:
+			self.dbDisconnect()
+		
+		# get connection details from QSettings
 		settings = QSettings()
 		print "selected:" + selected
 		key = "/PostgreSQL/connections/" + selected
@@ -84,25 +91,45 @@ class ManagerWindow(QMainWindow):
 		host, database, username, password = map(get_value_str, ["host", "database", "username", "password"])
 		port = get_value("port").toInt()[0]
 		
-		print host,port,database,username,password
-		self.db = postgis_utils.GeoDB(host=host, port=port, dbname=database, user=username, passwd=password)
+		# connect to DB
+		#print host,port,database,username,password
+		try:
+			self.db = postgis_utils.GeoDB(host=host, port=port, dbname=database, user=username, passwd=password)
+		except postgis_utils.DbError, e:
+			QMessageBox.critical(self, "error", "Couldn't connect to database:\n"+e.message)
+			return
 		
+		# set as default in QSettings
 		settings.setValue("/PostgreSQL/connections/selected", QVariant(selected))
 		
 		# set action as checked
-		# TODO: set other actions unchecked
 		if self.actionsDb.has_key(selected):
 			self.actionsDb[selected].setChecked(True)
 	
+		self.actionDbDisconnect.setEnabled(True)
+		
+		self.refreshTable()
+	
+	
 	def dbDisconnect(self):
 		
-		#self.db = None
-		# TODO: update UI
-		pass
+		# uncheck previously selected DB
+		for a in self.actionsDb.itervalues():
+			if a.isChecked():
+				a.setChecked(False)
+		
+		self.db = None
+		self.refreshTable()
+		
+		self.actionDbDisconnect.setEnabled(False)
+		
+		self.loadTableMetadata(None)
+		if self.useQgis:
+			self.loadTablePreview(None)
 
 	
 	def refreshTable(self):
-		self.tree.model().loadFromDb()
+		self.tree.model().loadFromDb(self.db)
 		self.tree.model().reset()
 		self.tree.expandAll()
 		
@@ -123,6 +150,10 @@ class ManagerWindow(QMainWindow):
 		
 	def loadTableMetadata(self, item):
 		""" show metadata about table """
+		if not item:
+			self.txtMetadata.setHtml(QString())
+			return
+		
 		if item.is_view:
 			reltype = "View"
 		else:
@@ -138,7 +169,7 @@ class ManagerWindow(QMainWindow):
 		
 	def loadTablePreview(self, item):
 		""" if has geometry column load to map canvas """
-		if item.geom_type:
+		if item and item.geom_type:
 			con = self.db.con_info() + " table=%s (%s) sql=" % (item.name, item.geom_column)
 			vl = qgis.core.QgsVectorLayer(con, "test", "postgres")
 			if not vl.isValid():
@@ -279,9 +310,8 @@ class ManagerWindow(QMainWindow):
 	
 	def createMenu(self):
 		
-		#self.actionDbSelect = QAction("Select database", self)
-		#self.actionDbConnect = QAction("Connect", self)
 		self.actionDbDisconnect = QAction("Disconnect", self)
+		self.actionDbDisconnect.setEnabled(False)
 		
 		self.actionCreateSchema = QAction("Create schema", self)
 		self.actionDeleteSchema = QAction("Delete (empty) schema", self)
@@ -298,8 +328,12 @@ class ManagerWindow(QMainWindow):
 		self.menuTable  = QMenu("Table", self)
 		self.menuData   = QMenu("Data", self)
 		
-		for a in self.actionsDb:
+		self.actionsDb = self.listDatabases()
+		
+		for k,a in self.actionsDb.iteritems():
 			self.menuDb.addAction(a)
+			a.setCheckable(True)
+			self.connect(a, SIGNAL("triggered(bool)"), self.dbConnectSlot)
 		self.menuDb.addSeparator()
 		self.menuDb.addAction(self.actionDbDisconnect)
 		

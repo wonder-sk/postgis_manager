@@ -57,8 +57,6 @@ def main():
 	
 	app = QApplication(sys.argv)
 	
-	#db = postgis_utils.GeoDB(host='localhost',dbname='gis',user='gisak',passwd='g')
-	
 	from ManagerWindow import ManagerWindow
 	dlg = ManagerWindow(use_qgis)
 	dlg.show()

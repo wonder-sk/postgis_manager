@@ -37,7 +37,10 @@ class GeoDB:
 		self.user = user
 		self.passwd = passwd
 		
-		self.con = psycopg2.connect(self.con_info())
+		try:
+			self.con = psycopg2.connect(self.con_info())
+		except psycopg2.OperationalError, e:
+			raise DbError(e.message)
 		
 	def con_info(self):
 		con_str = ''
