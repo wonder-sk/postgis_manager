@@ -1,6 +1,11 @@
+higher priority:
 - table fields - default prop
 - table properties
-- create views
 - SQL window
+- better discovery (without geometry_columns)
+
+low priority:
+- create views
 - permissions
 - vacuum
+- import non-spatial tables, e.g. csv/dbf

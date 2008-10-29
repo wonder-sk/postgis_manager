@@ -1,5 +1,6 @@
 
 from DlgCreateTable_ui import Ui_DlgCreateTable
+from DlgFieldProperties import DlgFieldProperties
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *

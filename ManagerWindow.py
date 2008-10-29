@@ -14,6 +14,7 @@ except ImportError, e:
 from DlgCreateTable import DlgCreateTable
 from DlgLoadData import DlgLoadData
 from DlgDumpData import DlgDumpData
+from DlgTableProperties import DlgTableProperties
 from DatabaseModel import TableItem, SchemaItem, DatabaseModel
 import resources
 import postgis_utils
@@ -43,9 +44,11 @@ class ManagerWindow(QMainWindow):
 		
 		# setup signal-slot connections
 		self.connect(self.tree, SIGNAL("clicked(const QModelIndex&)"), self.itemActivated)
+		self.connect(self.tree, SIGNAL("doubleClicked(const QModelIndex&)"), self.editTable)
 		self.connect(self.tree.model(), SIGNAL("dataChanged(const QModelIndex &, const QModelIndex &)"), self.refreshTable)
 		# actions
 		self.connect(self.actionCreateTable, SIGNAL("triggered(bool)"), self.createTable)
+		self.connect(self.actionEditTable, SIGNAL("triggered(bool)"), self.editTable)
 		self.connect(self.actionDeleteTableView, SIGNAL("triggered(bool)"), self.deleteTable)
 		self.connect(self.actionCreateSchema, SIGNAL("triggered(bool)"), self.createSchema)
 		self.connect(self.actionDeleteSchema, SIGNAL("triggered(bool)"), self.deleteSchema)
@@ -227,19 +230,45 @@ class ManagerWindow(QMainWindow):
 		self.connect(dlg, SIGNAL("databaseChanged()"), self.refreshTable)
 		dlg.exec_()
 		
-	def deleteTable(self):
+		
+	def editTable(self):
+		
+		ptr = self.currentDatabaseItem()
+		if not ptr:
+			return
+		if not isinstance(ptr, TableItem) or ptr.is_view:
+			QMessageBox.information(self, "sorry", "select a TABLE for editation")
+			return
+		
+		dlg = DlgTableProperties(self, self.db)
+		dlg.exec_()
+		
+		# TODO: refresh metadata
+		
+		
+	def currentDatabaseItem(self):
+		""" returns reference to item currently selected or displays an error """
 		
 		sel = self.tree.selectionModel()
 		indexes = sel.selectedRows()
 		if len(indexes) == 0:
-			QMessageBox.information(self, "sorry", "select a table/view for deletion!")
-			return
+			QMessageBox.information(self, "sorry", "nothing selected")
+			return None
 		if len(indexes) > 1:
-			QMessageBox.information(self, "sorry", "select only one table/view")
-			return
-			
+			QMessageBox.information(self, "sorry", "select only one item")
+			return None
+		
+		# we have exactly one selected item
 		index = indexes[0]
-		ptr = index.internalPointer()
+		return index.internalPointer()
+		
+		
+	def deleteTable(self):
+		
+		ptr = self.currentDatabaseItem()
+		if not ptr:
+			return
+		
 		if not isinstance(ptr, TableItem):
 			QMessageBox.information(self, "sorry", "select a TABLE or VIEW for deletion")
 			return
@@ -308,9 +337,9 @@ class ManagerWindow(QMainWindow):
 		self.txtMetadata = QTextBrowser()
 		
 		if self.useQgis:
-			self.table = QTableView()
+			self.table = QTableView(self)
 			
-			self.preview = qgis.gui.QgsMapCanvas()
+			self.preview = qgis.gui.QgsMapCanvas(self)
 			self.preview.setCanvasColor(QColor(255,255,255))
 		
 		self.tabs = QTabWidget()
@@ -344,6 +373,7 @@ class ManagerWindow(QMainWindow):
 		
 		self.actionCreateTable = QAction("Create table", self)
 		self.actionCreateView = QAction("Create view", self)
+		self.actionEditTable = QAction("Edit table", self)
 		self.actionDeleteTableView = QAction("Delete table/view", self)
 		
 		self.actionLoadData = QAction("Load data from shapefile", self)
@@ -365,7 +395,7 @@ class ManagerWindow(QMainWindow):
 		
 		for a in [self.actionCreateSchema, self.actionDeleteSchema]:
 			self.menuSchema.addAction(a)
-		for a in [self.actionCreateTable, self.actionCreateView, self.actionDeleteTableView]:
+		for a in [self.actionCreateTable, self.actionCreateView, self.actionEditTable, self.actionDeleteTableView]:
 			self.menuTable.addAction(a)
 		for a in [self.actionLoadData, self.actionDumpData]:
 			self.menuData.addAction(a)

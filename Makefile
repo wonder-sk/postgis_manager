@@ -1,10 +1,16 @@
 
-GEN_FILES = DlgCreateTable_ui.py DlgLoadData_ui.py resources.py DlgDumpData_ui.py
+GEN_FILES = DlgCreateTable_ui.py DlgLoadData_ui.py resources.py DlgDumpData_ui.py DlgFieldProperties_ui.py DlgTableProperties_ui.py
 
 all: $(GEN_FILES)
 
 DlgCreateTable_ui.py: DlgCreateTable.ui
 	pyuic4 -o DlgCreateTable_ui.py DlgCreateTable.ui
+
+DlgFieldProperties_ui.py: DlgFieldProperties.ui
+	pyuic4 -o DlgFieldProperties_ui.py DlgFieldProperties.ui
+
+DlgTableProperties_ui.py: DlgTableProperties.ui
+	pyuic4 -o DlgTableProperties_ui.py DlgTableProperties.ui
 
 DlgLoadData_ui.py: DlgLoadData.ui
 	pyuic4 -o DlgLoadData_ui.py DlgLoadData.ui
@@ -18,3 +24,6 @@ resources.py: resources.qrc
 
 clean:
 	rm -f $(GEN_FILES) *.pyc
+
+package:
+	cd .. && rm -f postgis_manager.zip && zip -r postgis_manager.zip postgis_manager -x \*.svn-base -x \*.pyc
