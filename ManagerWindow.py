@@ -164,11 +164,13 @@ class ManagerWindow(QMainWindow):
 		html = "<h1>%s</h1> (%s)<br>Owner: %s<br>Rows (estimation): %d<br>Pages: %d<p>Geometry: %s" % (item.name, reltype, item.owner, item.row_count, item.page_count, item.geom_type)
 		
 		# fields
-		html += "<h3>Fields</h3><table><tr><th>#<th>Name<th>Type<th>Null"
+		html += "<h3>Fields</h3><table><tr><th>#<th>Name<th>Type<th>Null<th>Default"
 		for fld in self.db.get_table_fields(item.name):
 			if fld.notnull: is_null_txt = "N"
 			else: is_null_txt = "Y"
-			html += "<tr><td>%s<td>%s<td>%s<td>%s" % (fld.num, fld.name, fld.data_type, is_null_txt)
+			if fld.hasdefault: default = fld.default
+			else: default=''
+			html += "<tr><td>%s<td>%s<td>%s<td>%s<td>%s" % (fld.num, fld.name, fld.data_type, is_null_txt, default)
 		html += "</table>"
 		
 		# constraints

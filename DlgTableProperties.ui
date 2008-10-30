@@ -16,7 +16,7 @@
    <item>
     <widget class="QLabel" name="label" >
      <property name="text" >
-      <string>Table attributes:</string>
+      <string>Table columns:</string>
      </property>
     </widget>
    </item>

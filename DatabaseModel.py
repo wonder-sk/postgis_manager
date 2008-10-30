@@ -233,6 +233,9 @@ class DatabaseModel(QAbstractItemModel):
 			
 		item = index.internalPointer()
 		new_name = str(value.toString())
+		if new_name == item.name:
+			return False
+		
 		if isinstance(item, TableItem):
 			# rename table or view
 			try:

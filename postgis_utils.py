@@ -15,7 +15,7 @@ import psycopg2
 
 class TableAttribute:
 	def __init__(self, row):
-		self.num, self.name, self.data_type, self.char_max_len, self.modifier, self.notnull, self.hasdefault = row
+		self.num, self.name, self.data_type, self.char_max_len, self.modifier, self.notnull, self.hasdefault, self.default = row
 
 
 class TableConstraint:
@@ -62,7 +62,7 @@ class TableField:
 	def field_def(self):
 		""" return field definition as used for CREATE TABLE or ALTER TABLE command """
 		txt = "%s %s %s" % (self.name, self.data_type, self.is_null_txt())
-		if self.default:
+		if len(self.default) > 0:
 			txt += " DEFAULT %s" % self.default
 		return txt
 		
@@ -171,14 +171,18 @@ class GeoDB:
 				a.attlen AS char_max_len,
 				a.atttypmod AS modifier,
 				a.attnotnull AS notnull,
-				a.atthasdef AS hasdefault
-			FROM pg_class c, pg_attribute a, pg_type t, pg_namespace nsp
-			WHERE c.relname = '%s' AND nsp.nspname = '%s' AND
-				a.attnum > 0 AND
-				a.attrelid = c.oid AND
-				a.atttypid = t.oid AND
-				c.relnamespace = nsp.oid
-			ORDER BY a.attnum""" % (table, schema)
+				a.atthasdef AS hasdefault,
+				adef.adsrc AS default_value
+			FROM pg_class c
+			JOIN pg_attribute a ON a.attrelid = c.oid
+			JOIN pg_type t ON a.atttypid = t.oid
+			JOIN pg_namespace nsp ON c.relnamespace = nsp.oid
+			LEFT JOIN pg_attrdef adef ON adef.adrelid = a.attrelid AND adef.adnum = a.attnum
+			WHERE
+				nsp.nspname = '%s' AND
+			  c.relname = '%s' AND
+				a.attnum > 0
+			ORDER BY a.attnum""" % (schema, table)
 
 		self._exec_sql(c, sql)
 		attrs = []
