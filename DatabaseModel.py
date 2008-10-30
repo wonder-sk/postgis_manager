@@ -111,6 +111,9 @@ class TableItem(TreeItem):
 		if not hasattr(TableItem, 'tableIcon'):
 			TableItem.tableIcon = QIcon(":/icons/table.xpm")
 			TableItem.viewIcon = QIcon(":/icons/view.xpm")
+			
+	def schema(self):
+		return self.parent()
 		
 	def data(self, column):
 		if column == 0:

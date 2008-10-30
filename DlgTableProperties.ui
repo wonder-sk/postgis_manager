@@ -21,7 +21,11 @@
     </widget>
    </item>
    <item>
-    <widget class="QTreeView" name="viewFields" />
+    <widget class="QTreeView" name="viewFields" >
+     <property name="rootIsDecorated" >
+      <bool>false</bool>
+     </property>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" >
@@ -53,9 +57,9 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="btnRemoveColumn" >
+      <widget class="QPushButton" name="btnDeleteColumn" >
        <property name="text" >
-        <string>Remove column</string>
+        <string>Delete column</string>
        </property>
       </widget>
      </item>
@@ -77,7 +81,7 @@
   <tabstop>viewFields</tabstop>
   <tabstop>btnAddColumn</tabstop>
   <tabstop>btnEditColumn</tabstop>
-  <tabstop>btnRemoveColumn</tabstop>
+  <tabstop>btnDeleteColumn</tabstop>
   <tabstop>buttonBox</tabstop>
  </tabstops>
  <resources/>

@@ -46,6 +46,8 @@ class DbError(Exception):
 	def __init__(self, message, query=None):
 		self.message = message
 		self.query = query
+	def __str__(self):
+		return "MESSAGE: %s\nQUERY: %s" % (self.message, self.query)
 
 class TableField:
 	def __init__(self, name, data_type, is_null=None, default=None):
@@ -56,6 +58,13 @@ class TableField:
 			return "NULL"
 		else:
 			return "NOT NULL"
+		
+	def field_def(self):
+		""" return field definition as used for CREATE TABLE or ALTER TABLE command """
+		txt = "%s %s %s" % (self.name, self.data_type, self.is_null_txt())
+		if self.default:
+			txt += " DEFAULT %s" % self.default
+		return txt
 		
 
 class GeoDB:
@@ -154,7 +163,7 @@ class GeoDB:
 		
 		
 	def get_table_fields(self, table, schema='public'):
-		# TODO: schema
+		""" return list of columns in table """
 		c = self.con.cursor()
 		sql = """SELECT a.attnum AS ordinal_position,
 				a.attname AS column_name,
@@ -163,12 +172,13 @@ class GeoDB:
 				a.atttypmod AS modifier,
 				a.attnotnull AS notnull,
 				a.atthasdef AS hasdefault
-			FROM pg_class c, pg_attribute a, pg_type t
-			WHERE c.relname = '%s' AND
+			FROM pg_class c, pg_attribute a, pg_type t, pg_namespace nsp
+			WHERE c.relname = '%s' AND nsp.nspname = '%s' AND
 				a.attnum > 0 AND
 				a.attrelid = c.oid AND
-				a.atttypid = t.oid
-			ORDER BY a.attnum""" % table
+				a.atttypid = t.oid AND
+				c.relnamespace = nsp.oid
+			ORDER BY a.attnum""" % (table, schema)
 
 		self._exec_sql(c, sql)
 		attrs = []
@@ -212,7 +222,6 @@ class GeoDB:
 	"""
 		
 	def add_geometry_column(self, table, geom_type, schema=None, geom_column='the_geom', srid=-1, dim=2):
-		c = self.con.cursor()
 		
 		# use schema if explicitly specified
 		if schema:
@@ -220,8 +229,25 @@ class GeoDB:
 		else:
 			schema_part = ""
 		sql = "SELECT AddGeometryColumn(%s'%s', '%s', %d, '%s', %d)" % (schema_part, table, geom_column, srid, geom_type, dim)
-		self._exec_sql(c, sql)
-		self.con.commit()
+		self._exec_sql_and_commit(sql)
+		
+	def delete_geometry_column(self, table, geom_column, schema=None):
+		""" use postgis function to delete geometry column correctly """
+		if schema:
+			schema_part = "'%s', " % schema
+		else:
+			schema_part = ""
+		sql = "SELECT DropGeometryColumn(%s'%s', '%s')" % (schema_part, table, geom_column)
+		self._exec_sql_and_commit(sql)
+		
+	def delete_geometry_table(self, table, schema=None):
+		""" delete table with one or more geometries using postgis function """
+		if schema:
+			schema_part = "'%s', " % schema
+		else:
+			schema_part = ""
+		sql = "SELECT DropGeometryTable(%s'%s')" % (schema_part, table)
+		self._exec_sql_and_commit(sql)
 		
 	def create_table(self, table, fields, schema=None):
 		""" create ordinary table
@@ -233,44 +259,34 @@ class GeoDB:
 		
 		table_name = self._table_name(schema, table)
 		
-		c = self.con.cursor()
-		sql = "CREATE TABLE %s (%s %s %s" % (table_name, fields[0].name, fields[0].data_type, fields[0].is_null_txt())
+		sql = "CREATE TABLE %s (%s" % (table_name, fields[0].field_def())
 		for field in fields[1:]:
-			sql += ", %s %s %s" % (field.name, field.data_type, field.is_null_txt())
+			sql += ", %s" % field.field_def()
 		sql += ")"
-		self._exec_sql(c, sql)
-		self.con.commit()
+		self._exec_sql_and_commit(sql)
 		return True
 	
 	def delete_table(self, table, schema=None):
 		""" delete table from the database """
 		table_name = self._table_name(schema, table)
-		c = self.con.cursor()
 		sql = "DROP TABLE %s" % table_name
-		self._exec_sql(c, sql)
-		self.con.commit()
+		self._exec_sql_and_commit(sql)
 		
 	def rename_table(self, table, new_table, schema=None):
 		""" rename a table in database """
 		table_name = self._table_name(schema, table)
 		sql = "ALTER TABLE %s RENAME TO %s" % (table_name, new_table)
-		c = self.con.cursor()
-		self._exec_sql(c, sql)
-		self.con.commit()
+		self._exec_sql_and_commit(sql)
 		
 	def create_view(self, name, query, schema=None):
 		view_name = self._table_name(schema, name)
-		c = self.con.cursor()
 		sql = "CREATE VIEW %s AS %s" % (view_name, query)
-		self._exec_sql(c, sql)
-		self.con.commit()
+		self._exec_sql_and_commit(sql)
 	
 	def delete_view(self, name, schema=None):
 		view_name = self._table_name(schema, name)
-		c = self.con.cursor()
 		sql = "DROP VIEW %s" % view_name
-		self._exec_sql(c, sql)
-		self.con.commit()
+		self._exec_sql_and_commit(sql)
 	
 	def rename_view(self, name, new_name, schema=None):
 		""" rename view in database """
@@ -279,36 +295,81 @@ class GeoDB:
 	def create_schema(self, schema):
 		""" create a new empty schema in database """
 		sql = "CREATE SCHEMA %s" % schema
-		c = self.con.cursor()
-		self._exec_sql(c, sql)
-		self.con.commit()
+		self._exec_sql_and_commit(sql)
 		
 	def delete_schema(self, schema):
 		""" drop (empty) schema from database """
 		sql = "DROP SCHEMA %s" % schema
-		c = self.con.cursor()
-		self._exec_sql(c, sql)
-		self.con.commit()
+		self._exec_sql_and_commit(sql)
 		
 	def rename_schema(self, schema, new_schema):
 		""" rename a schema in database """
 		sql = "ALTER SCHEMA %s RENAME TO %s" % (schema, new_schema)
-		c = self.con.cursor()
-		self._exec_sql(c, sql)
-		self.con.commit()
+		self._exec_sql_and_commit(sql)
+		
+	def table_add_column(self, table, field, schema=None):
+		""" add a column to table (passed as TableField instance) """
+		table_name = self._table_name(schema, table)
+		sql = "ALTER TABLE %s ADD %s" % (table_name, field.field_def())
+		self._exec_sql_and_commit(sql)
+		
+	def table_delete_column(self, table, field, schema=None):
+		""" delete column from a table """
+		table_name = self._table_name(schema, table)
+		sql = "ALTER TABLE %s DROP %s" % (table_name, field)
+		self._exec_sql_and_commit(sql)
+		
+	def table_column_rename(self, table, name, new_name, schema=None):
+		""" rename column in a table """
+		table_name = self._table_name(schema, table)
+		sql = "ALTER TABLE %s RENAME %s TO %s" % (table_name, name, new_name)
+		self._exec_sql_and_commit(sql)
+		
+	def table_column_set_type(self, table, column, data_type, schema=None):
+		""" change column type """
+		table_name = self._table_name(schema, table)
+		sql = "ALTER TABLE %s ALTER %s TYPE %s" % (table_name, column, data_type)
+		self._exec_sql_and_commit(sql)
+		
+	def table_column_set_default(self, table, column, default, schema=None):
+		""" change column's default value. If default=None drop default value """
+		table_name = self._table_name(schema, table)
+		if default:
+			sql = "ALTER TABLE %s ALTER %s SET DEFAULT %s" % (table_name, column, default)
+		else:
+			sql = "ALTER TABLE %s ALTER %s DROP DEFAULT" % (table_name, column)
+		self._exec_sql_and_commit(sql)
+		
+	def table_column_set_null(self, table, column, is_null, schema=None):
+		""" change whether column can contain null values """
+		table_name = self._table_name(schema, table)
+		sql = "ALTER TABLE %s ALTER %s " % (table_name, column)
+		if is_null:
+			sql += "DROP NOT NULL"
+		else:
+			sql += "SET NOT NULL"
+		self._exec_sql_and_commit(sql)
 	
 	def create_spatial_index(self, table, schema=None, geom_column='the_geom'):
 		table_name = self._table_name(schema, table)
-		c = self.con.cursor()
 		sql = "CREATE INDEX sidx_%s ON %s USING GIST(%s GIST_GEOMETRY_OPS)" % (table, table_name, geom_column)
-		self._exec_sql(c, sql)
-		self.con.commit()
+		self._exec_sql_and_commit(sql)
 		
 	def _exec_sql(self, cursor, sql):
 		try:
 			cursor.execute(sql)
 		except psycopg2.Error, e:
 			raise DbError(e.message, e.cursor.query)
+		
+	def _exec_sql_and_commit(self, sql):
+		""" tries to execute and commit some action, on error it rolls back the change """
+		try:
+			c = self.con.cursor()
+			self._exec_sql(c, sql)
+			self.con.commit()
+		except DbError, e:
+			self.con.rollback()
+			raise
 		
 	def _table_name(self, schema, table):
 		if not schema:

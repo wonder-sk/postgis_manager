@@ -240,10 +240,13 @@ class ManagerWindow(QMainWindow):
 			QMessageBox.information(self, "sorry", "select a TABLE for editation")
 			return
 		
-		dlg = DlgTableProperties(self, self.db)
+		dlg = DlgTableProperties(self.db, ptr.schema().name, ptr.name)
 		dlg.exec_()
 		
-		# TODO: refresh metadata
+		# update info
+		self.loadTableMetadata(ptr)
+		if self.useQgis:
+			self.loadTablePreview(ptr)
 		
 		
 	def currentDatabaseItem(self):
@@ -279,9 +282,12 @@ class ManagerWindow(QMainWindow):
 		
 		try:
 			if ptr.is_view:
-				self.db.delete_view(ptr.name)
+				self.db.delete_view(ptr.name, ptr.schema().name)
 			else:
-				self.db.delete_table(ptr.name)
+				if len(ptr.geom_column) > 0:
+					self.db.delete_geometry_table(ptr.name, ptr.schema().name)
+				else:
+					self.db.delete_table(ptr.name, ptr.schema().name)
 			self.refreshTable()
 			QMessageBox.information(self, "good", "table/view deleted.")
 		except postgis_utils.DbError, e:
@@ -352,6 +358,7 @@ class ManagerWindow(QMainWindow):
 
 		self.tree = QTreeView()
 		self.tree.setRootIsDecorated(False)
+		self.tree.setEditTriggers( QAbstractItemView.SelectedClicked | QAbstractItemView.EditKeyPressed )
 		self.dock = QDockWidget("Database view", self)
 		self.dock.setFeatures(QDockWidget.DockWidgetMovable)
 		self.dock.setWidget(self.tree)
