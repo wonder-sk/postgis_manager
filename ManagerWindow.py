@@ -16,6 +16,7 @@ from DlgLoadData import DlgLoadData
 from DlgDumpData import DlgDumpData
 from DlgTableProperties import DlgTableProperties
 from DatabaseModel import TableItem, SchemaItem, DatabaseModel
+from DbTableModel import DbTableModel
 import resources
 import postgis_utils
 
@@ -32,6 +33,8 @@ class ManagerWindow(QMainWindow):
 		
 		self.dbModel = DatabaseModel(self)
 		self.tree.setModel(self.dbModel)
+		
+		self.tableModel = None
 		
 		# connect to database selected last time
 		settings = QSettings()
@@ -194,12 +197,27 @@ class ManagerWindow(QMainWindow):
 		
 		self.txtMetadata.setHtml(html)
 		
-		# load also table and map if qgis is enabled
+		self.loadDbTable(item)
+		
+		# load also map if qgis is enabled
+		# TODO
 		if self.useQgis:
-			self.loadTablePreview(ptr)
+			self.loadMapPreview(ptr)
+		
+		
+	def loadDbTable(self, item):
+		
+		# the same table?
+		if self.table.model() and self.table.model().table == item.name and self.table.model().schema == item.schema().name:
+			return
+		
+		newModel = DbTableModel(self.db, item.schema().name, item.name)
+		self.table.setModel(newModel)
+		del self.tableModel # ensure that old model gets deleted
+		self.tableModel = newModel
 
 		
-	def loadTablePreview(self, item):
+	def loadMapPreview(self, item):
 		""" if has geometry column load to map canvas """
 		if item and item.geom_type:
 			con = self.db.con_info() + " table=%s (%s) sql=" % (item.name, item.geom_column)
@@ -213,9 +231,9 @@ class ManagerWindow(QMainWindow):
 				self.preview.setLayerSet( [ qgis.gui.QgsMapCanvasLayer(vl, True, False) ] )
 				self.preview.zoomToFullExtent()
 				
-				from PreviewTableModel import PreviewTableModel
-				tableModel = PreviewTableModel(vl, self)
-				self.table.setModel(tableModel)
+				#from PreviewTableModel import PreviewTableModel
+				#tableModel = PreviewTableModel(vl, self)
+				#self.table.setModel(tableModel)
 				
 		else:
 			newLayerId = None
@@ -366,17 +384,17 @@ class ManagerWindow(QMainWindow):
 		self.resize(QSize(700,500).expandedTo(self.minimumSizeHint()))
 		
 		self.txtMetadata = QTextBrowser()
+		self.table = QTableView(self)
+		self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
 		
 		if self.useQgis:
-			self.table = QTableView(self)
-			
 			self.preview = qgis.gui.QgsMapCanvas(self)
 			self.preview.setCanvasColor(QColor(255,255,255))
 		
 		self.tabs = QTabWidget()
 		self.tabs.addTab(self.txtMetadata, "Metadata")
+		self.tabs.addTab(self.table, "Table")
 		if self.useQgis:
-			self.tabs.addTab(self.table, "Table")
 			self.tabs.addTab(self.preview, "Preview")
 		
 		self.setCentralWidget(self.tabs)
