@@ -1,7 +1,4 @@
 higher priority:
-- table fields - default prop
-- empty table
-- table properties
 - SQL window
 - better discovery (without geometry_columns)
 - database info (postgis_version etc)

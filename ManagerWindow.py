@@ -49,6 +49,7 @@ class ManagerWindow(QMainWindow):
 		# actions
 		self.connect(self.actionCreateTable, SIGNAL("triggered(bool)"), self.createTable)
 		self.connect(self.actionEditTable, SIGNAL("triggered(bool)"), self.editTable)
+		self.connect(self.actionEmptyTable, SIGNAL("triggered(bool)"), self.emptyTable)
 		self.connect(self.actionDeleteTableView, SIGNAL("triggered(bool)"), self.deleteTable)
 		self.connect(self.actionCreateSchema, SIGNAL("triggered(bool)"), self.createSchema)
 		self.connect(self.actionDeleteSchema, SIGNAL("triggered(bool)"), self.deleteSchema)
@@ -127,8 +128,6 @@ class ManagerWindow(QMainWindow):
 		self.actionDbDisconnect.setEnabled(False)
 		
 		self.loadTableMetadata(None)
-		if self.useQgis:
-			self.loadTablePreview(None)
 
 	
 	def refreshTable(self):
@@ -143,8 +142,6 @@ class ManagerWindow(QMainWindow):
 			self.loadSchemaMetadata(item)
 		elif isinstance(item, TableItem):
 			self.loadTableMetadata(item)
-			if self.useQgis:
-				self.loadTablePreview(item)
 	
 	def loadSchemaMetadata(self, item):
 		""" show metadata about schema """	
@@ -197,6 +194,10 @@ class ManagerWindow(QMainWindow):
 		
 		self.txtMetadata.setHtml(html)
 		
+		# load also table and map if qgis is enabled
+		if self.useQgis:
+			self.loadTablePreview(ptr)
+
 		
 	def loadTablePreview(self, item):
 		""" if has geometry column load to map canvas """
@@ -247,8 +248,6 @@ class ManagerWindow(QMainWindow):
 		
 		# update info
 		self.loadTableMetadata(ptr)
-		if self.useQgis:
-			self.loadTablePreview(ptr)
 		
 		
 	def currentDatabaseItem(self):
@@ -266,9 +265,33 @@ class ManagerWindow(QMainWindow):
 		# we have exactly one selected item
 		index = indexes[0]
 		return index.internalPointer()
+	
+	
+	def emptyTable(self):
+		""" deletes all items from current table """
 		
+		ptr = self.currentDatabaseItem()
+		if not ptr:
+			return
 		
+		if not isinstance(ptr, TableItem) or ptr.is_view:
+			QMessageBox.information(self, "sorry", "select a TABLE to empty it")
+			return
+		
+		res = QMessageBox.question(self, "hey!", "really delete all items frm table %s ?" % ptr.name, QMessageBox.Yes | QMessageBox.No)
+		if res != QMessageBox.Yes:
+			return
+		
+		try:
+			self.db.empty_table(ptr.name, ptr.schema().name)
+			self.loadTableMetadata(ptr)
+			QMessageBox.information(self, "good", "table has been emptied.")
+		except postgis_utils.DbError, e:
+			QMessageBox.critical(self, "error", "Message:\n%s\nQuery:\n%s\n" % (e.message, e.query))
+		
+
 	def deleteTable(self):
+		""" deletes current table from database """
 		
 		ptr = self.currentDatabaseItem()
 		if not ptr:
@@ -384,6 +407,7 @@ class ManagerWindow(QMainWindow):
 		self.actionCreateView = QAction("Create view", self)
 		self.actionEditTable = QAction("Edit table", self)
 		self.actionDeleteTableView = QAction("Delete table/view", self)
+		self.actionEmptyTable = QAction("Empty table", self)
 		
 		self.actionLoadData = QAction("Load data from shapefile", self)
 		self.actionDumpData = QAction("Dump data to shapefile", self)
@@ -404,7 +428,7 @@ class ManagerWindow(QMainWindow):
 		
 		for a in [self.actionCreateSchema, self.actionDeleteSchema]:
 			self.menuSchema.addAction(a)
-		for a in [self.actionCreateTable, self.actionCreateView, self.actionEditTable, self.actionDeleteTableView]:
+		for a in [self.actionCreateTable, self.actionCreateView, self.actionEditTable, self.actionEmptyTable, self.actionDeleteTableView]:
 			self.menuTable.addAction(a)
 		for a in [self.actionLoadData, self.actionDumpData]:
 			self.menuData.addAction(a)
