@@ -20,21 +20,30 @@ class DbTableModel(QAbstractTableModel):
 		for fld in self.db.get_table_fields(self.table, self.schema):
 			if fld.data_type != "geometry":
 				self.fields.append(fld.name)
-		
 		fields_txt = ", ".join(self.fields)
-		print fields_txt
 		
-		self.cur = self.db.con.cursor("db_table_"+self.table)
-		self.cur.execute("SELECT %s FROM %s.%s" % (fields_txt, self.schema, self.table))
-		self.rows = self.cur.fetchall()
-		#self.cur.close()
-		
-		self.row_count = len(self.rows)
+		self.row_count = self.db.get_table_rows(self.table, self.schema)
 		self.col_count = len(self.fields)
 		
+		# create named cursor and run query
+		self.cur = self.db.con.cursor("db_table_"+self.table)
+		self.cur.execute("SELECT %s FROM %s.%s" % (fields_txt, self.schema, self.table))
+		
+		self.fetched_count = 100
+		self.fetchMoreData(0)
+		
+		
 	def __del__(self):
-		#print "db table model del:",self.schema,self.table
+		# close cursor and save memory
 		self.cur.close()
+		
+	def fetchMoreData(self, row_start):
+		
+		#print "fetching from",row_start
+		self.cur.scroll(row_start, mode='absolute')
+		self.fetched_rows = self.cur.fetchmany(self.fetched_count)
+		self.fetched_from = row_start
+
 
 	def rowCount(self, index):
 		return self.row_count
@@ -46,7 +55,12 @@ class DbTableModel(QAbstractTableModel):
 		if role != Qt.DisplayRole and role != Qt.FontRole:
 			return QVariant()
 		
-		val = self.rows[index.row()][index.column()]
+		# if we have run out of fetched values, let's fetch some more
+		row = index.row()
+		if row < self.fetched_from or row >= self.fetched_from+self.fetched_count:
+			self.fetchMoreData(row)
+		
+		val = self.fetched_rows[row-self.fetched_from][index.column()]
 		
 		# draw NULL in italic
 		if role == Qt.FontRole:
