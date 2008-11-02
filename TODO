@@ -1,11 +1,11 @@
 higher priority:
 - SQL window
 - better discovery (without geometry_columns)
-- database info (postgis_version etc)
-- add geospatial support to db
+- default prop for create table, max_length, primary key
 
 low priority:
 - create views
 - permissions
 - vacuum, analyze
 - import non-spatial tables, e.g. csv/dbf
+- add geospatial support to db

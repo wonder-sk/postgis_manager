@@ -14,6 +14,7 @@ except ImportError, e:
 from DlgCreateTable import DlgCreateTable
 from DlgLoadData import DlgLoadData
 from DlgDumpData import DlgDumpData
+from DlgAbout import DlgAbout
 from DlgTableProperties import DlgTableProperties
 from DatabaseModel import TableItem, SchemaItem, DatabaseModel
 from DbTableModel import DbTableModel
@@ -58,8 +59,9 @@ class ManagerWindow(QMainWindow):
 		self.connect(self.actionDeleteSchema, SIGNAL("triggered(bool)"), self.deleteSchema)
 		self.connect(self.actionLoadData, SIGNAL("triggered(bool)"), self.loadData)
 		self.connect(self.actionDumpData, SIGNAL("triggered(bool)"), self.dumpData)
-		#self.connect(self.actionDbConnect, SIGNAL("triggered(bool)"), self.dbConnect)
+		self.connect(self.actionDbInfo, SIGNAL("triggered(bool)"), self.dbInfo)
 		self.connect(self.actionDbDisconnect, SIGNAL("triggered(bool)"), self.dbDisconnect)
+		self.connect(self.actionAbout, SIGNAL("triggered(bool)"), self.about)
 		
 		
 	def listDatabases(self):
@@ -116,6 +118,8 @@ class ManagerWindow(QMainWindow):
 		self.actionDbDisconnect.setEnabled(True)
 		
 		self.refreshTable()
+		
+		self.updateWindowTitle()
 	
 	
 	def dbDisconnect(self):
@@ -131,6 +135,29 @@ class ManagerWindow(QMainWindow):
 		self.actionDbDisconnect.setEnabled(False)
 		
 		self.loadTableMetadata(None)
+
+		self.updateWindowTitle()
+
+	
+	def updateWindowTitle(self):
+		if self.db:
+			self.setWindowTitle("PostGIS Manager - %s - user %s at %s" % (self.db.dbname, self.db.user, self.db.host) )
+		else:
+			self.setWindowTitle("PostGIS Manager")
+
+
+	def dbInfo(self):
+		""" retrieve information about current server / database """
+		info = self.db.get_info()
+		msg = "Server version:\n"+info+"\n\n"
+		
+		try:
+			gis_info = self.db.get_postgis_info()
+			msg += "PostGIS:\n- library: %s\n- scripts: %s\n- GEOS: %s\n- Proj: %s\n- use stats: %s" % (gis_info[0], gis_info[1], gis_info[3], gis_info[4], gis_info[5])
+		except DbError, e:
+			msg += "PostGIS support not enabled!"
+		
+		QMessageBox.information(self, "db info", msg)
 
 	
 	def refreshTable(self):
@@ -194,6 +221,9 @@ class ManagerWindow(QMainWindow):
 			for fld in indexes:
 				html += "<tr><td>%s<td>%s" % (fld[0], fld[1])
 			html += "</table>"
+			
+		if item.is_view:
+			html += "<h3>View definition</h3>%s" % self.db.get_view_definition(item.name, item.schema().name)
 		
 		self.txtMetadata.setHtml(html)
 		
@@ -377,6 +407,12 @@ class ManagerWindow(QMainWindow):
 		dlg.exec_()
 		
 		
+	def about(self):
+		""" show about box """
+		dlg = DlgAbout(self)
+		dlg.exec_()
+	
+	
 	def setupUi(self):
 		
 		self.setWindowTitle("PostGIS Manager")
@@ -415,6 +451,7 @@ class ManagerWindow(QMainWindow):
 	
 	def createMenu(self):
 		
+		self.actionDbInfo = QAction("Info", self)
 		self.actionDbDisconnect = QAction("Disconnect", self)
 		self.actionDbDisconnect.setEnabled(False)
 		
@@ -430,10 +467,13 @@ class ManagerWindow(QMainWindow):
 		self.actionLoadData = QAction("Load data from shapefile", self)
 		self.actionDumpData = QAction("Dump data to shapefile", self)
 		
+		self.actionAbout = QAction("About", self)
+		
 		self.menuDb     = QMenu("Database", self)
 		self.menuSchema = QMenu("Schema", self)
 		self.menuTable  = QMenu("Table", self)
 		self.menuData   = QMenu("Data", self)
+		self.menuHelp   = QMenu("Help", self)
 		
 		self.actionsDb = self.listDatabases()
 		
@@ -441,6 +481,8 @@ class ManagerWindow(QMainWindow):
 			self.menuDb.addAction(a)
 			a.setCheckable(True)
 			self.connect(a, SIGNAL("triggered(bool)"), self.dbConnectSlot)
+		self.menuDb.addSeparator()
+		self.menuDb.addAction(self.actionDbInfo)
 		self.menuDb.addSeparator()
 		self.menuDb.addAction(self.actionDbDisconnect)
 		
@@ -451,9 +493,12 @@ class ManagerWindow(QMainWindow):
 		for a in [self.actionLoadData, self.actionDumpData]:
 			self.menuData.addAction(a)
 		
+		self.menuHelp.addAction(self.actionAbout)
+		
 		self.menuBar = QMenuBar(self)
 		self.menuBar.addMenu(self.menuDb)
 		self.menuBar.addMenu(self.menuSchema)
 		self.menuBar.addMenu(self.menuTable)
 		self.menuBar.addMenu(self.menuData)
+		self.menuBar.addMenu(self.menuHelp)
 		self.setMenuBar(self.menuBar)

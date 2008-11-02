@@ -7,7 +7,8 @@ licensed under the terms of GNU GPL v2
 
 Good resource for metadata extraction:
 http://www.alberton.info/postgresql_meta_info.html
-
+System information functions:
+http://www.postgresql.org/docs/8.0/static/functions-info.html
 """
 
 import psycopg2
@@ -90,6 +91,24 @@ class GeoDB:
 		if self.user:   con_str += "user='%s' "     % self.user
 		if self.passwd: con_str += "password='%s' " % self.passwd
 		return con_str
+		
+	def get_info(self):
+		c = self.con.cursor()
+		self._exec_sql(c, "SELECT version()")
+		return c.fetchone()[0]
+	
+	def get_postgis_info(self):
+		""" returns tuple about postgis support:
+			- lib version
+			- installed scripts version
+			- released scripts version
+			- geos version
+			- proj version
+			- whether uses stats
+		"""
+		c = self.con.cursor()
+		self._exec_sql(c, "SELECT postgis_lib_version(), postgis_scripts_installed(), postgis_scripts_released(), postgis_geos_version(), postgis_proj_version(), postgis_uses_stats()")
+		return c.fetchone()
 	
 	def list_schemas(self):
 		"""
@@ -217,6 +236,14 @@ class GeoDB:
 			constrs.append(TableConstraint(row))
 		return constrs
 		
+	
+	def get_view_definition(self, view, schema=None):
+		""" returns definition of the view """
+		# TODO: schema
+		sql = "SELECT pg_get_viewdef(oid) FROM pg_class WHERE relname='%s' AND relkind='v'" % view
+		c = self.con.cursor()
+		self._exec_sql(c, sql)
+		return c.fetchone()[0]
 		
 	"""
 	def list_tables(self):
