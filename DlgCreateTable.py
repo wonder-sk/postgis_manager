@@ -160,7 +160,7 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 		
 		schema = str(self.cboSchema.currentText())
 		if len(schema) == 0:
-			QMessageBox.information(self, "sorry", "select scheme!")
+			QMessageBox.information(self, "sorry", "select schema!")
 			return
 		
 		table = str(self.editName.text())
@@ -195,7 +195,7 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 			
 			# commit to DB
 			try:
-				self.db.create_table(table, flds)
+				self.db.create_table(table, flds, schema)
 				if useGeomColumn:
 					self.db.add_geometry_column(table, geomType, schema, geomColumn)
 					# commit data definition changes, otherwise index can't be built

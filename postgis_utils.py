@@ -63,7 +63,7 @@ class TableField:
 	def field_def(self):
 		""" return field definition as used for CREATE TABLE or ALTER TABLE command """
 		txt = "%s %s %s" % (self.name, self.data_type, self.is_null_txt())
-		if len(self.default) > 0:
+		if self.default and len(self.default) > 0:
 			txt += " DEFAULT %s" % self.default
 		return txt
 		
@@ -391,6 +391,30 @@ class GeoDB:
 		table_name = self._table_name(schema, table)
 		sql = "CREATE INDEX sidx_%s ON %s USING GIST(%s GIST_GEOMETRY_OPS)" % (table, table_name, geom_column)
 		self._exec_sql_and_commit(sql)
+		
+		
+	def get_database_privileges(self):
+		""" db privileges: (can create schemas, can create temp. tables) """
+		sql = "SELECT has_database_privilege('%s', 'CREATE'), has_database_privilege('%s', 'TEMP')" % (self.dbname, self.dbname)
+		c = self.con.cursor()
+		self._exec_sql(c, sql)
+		return c.fetchone()
+		
+	def get_schema_privileges(self, schema):
+		""" schema privileges: (can create new objects, can access objects in schema) """
+		sql = "SELECT has_schema_privilege('%s', 'CREATE'), has_schema_privilege('%s', 'USAGE')" % (schema, schema)
+		c = self.con.cursor()
+		self._exec_sql(c, sql)
+		return c.fetchone()
+	
+	def get_table_privileges(self, table, schema=None):
+		""" table privileges: (select, insert, update, delete) """
+		t = self._table_name(schema, table)
+		sql = """SELECT has_table_privilege('%s', 'SELECT'), has_table_privilege('%s', 'INSERT'),
+		                has_table_privilege('%s', 'UPDATE'), has_table_privilege('%s', 'DELETE')""" % (t,t,t,t)
+		c = self.con.cursor()
+		self._exec_sql(c, sql)
+		return c.fetchone()
 		
 	def _exec_sql(self, cursor, sql):
 		try:

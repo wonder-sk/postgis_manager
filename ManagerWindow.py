@@ -32,13 +32,17 @@ class ManagerWindow(QMainWindow):
 		
 		self.setupUi()
 		
+		settings = QSettings()
+		self.restoreGeometry(settings.value("/PostGIS_Manager/geometry").toByteArray())
+		self.restoreState(settings.value("/PostGIS_Manager/windowState").toByteArray())
+		
+		
 		self.dbModel = DatabaseModel(self)
 		self.tree.setModel(self.dbModel)
 		
 		self.tableModel = None
 		
 		# connect to database selected last time
-		settings = QSettings()
 		sel = str(settings.value("/PostgreSQL/connections/selected").toString())
 		self.dbConnect(sel)
 		
@@ -63,6 +67,13 @@ class ManagerWindow(QMainWindow):
 		self.connect(self.actionDbDisconnect, SIGNAL("triggered(bool)"), self.dbDisconnect)
 		self.connect(self.actionAbout, SIGNAL("triggered(bool)"), self.about)
 		
+	def closeEvent(self, e):
+		""" save window state """
+		settings = QSettings()
+		settings.setValue("/PostGIS_Manager/windowState", QVariant(self.saveState()))
+		settings.setValue("/PostGIS_Manager/geometry", QVariant(self.saveGeometry()))
+		
+		QMainWindow.closeEvent(self, e)
 		
 	def listDatabases(self):
 		
@@ -156,6 +167,14 @@ class ManagerWindow(QMainWindow):
 			msg += "PostGIS:\n- library: %s\n- scripts: %s\n- GEOS: %s\n- Proj: %s\n- use stats: %s" % (gis_info[0], gis_info[1], gis_info[3], gis_info[4], gis_info[5])
 		except DbError, e:
 			msg += "PostGIS support not enabled!"
+			
+		priv = self.db.get_database_privileges()
+		if priv[0] or priv[1]:
+			msg += "\n\nUser has privileges:\n"
+			if priv[0]: msg += "- create new schemas\n"
+			if priv[1]: msg += "- create temporary tables\n"
+		else:
+			msg += "User has no privileges :-("
 		
 		QMessageBox.information(self, "db info", msg)
 
@@ -173,10 +192,21 @@ class ManagerWindow(QMainWindow):
 		elif isinstance(item, TableItem):
 			self.loadTableMetadata(item)
 	
+	
 	def loadSchemaMetadata(self, item):
 		""" show metadata about schema """	
 		html = "<h1>%s</h1> (schema)<p>Tables: %d<br>Owner: %s" % (item.name, item.childCount(), item.owner)
+		html += "<br><br>"
+		priv = self.db.get_schema_privileges(item.name)
+		if priv[0] or priv[1]:
+			html += "User has privileges:<ul>"
+			if priv[0]: html += "<li>create new objects"
+			if priv[1]: html += "<li>access objects"
+			html += "</ul>"
+		else:
+			html += "User has no privileges :-("
 		self.txtMetadata.setHtml(html)
+		
 		
 	def loadTableMetadata(self, item):
 		""" show metadata about table """
@@ -190,9 +220,20 @@ class ManagerWindow(QMainWindow):
 			reltype = "Table"
 		html = "<h1>%s</h1> (%s)<br>Owner: %s<br>Rows (estimation): %d<br>Pages: %d<p>Geometry: %s" % (item.name, reltype, item.owner, item.row_count, item.page_count, item.geom_type)
 		
+		# permissions
+		html += "<p>Privileges: "
+		priv = self.db.get_table_privileges(item.name, item.schema().name)
+		if priv[0] or priv[1] or priv[2] or priv[3]:
+			if priv[0]: html += "select "
+			if priv[1]: html += "insert "
+			if priv[2]: html += "update "
+			if priv[3]: html += "delete "
+		else:
+			html += "<i>none</i>"
+		
 		# fields
 		html += "<h3>Fields</h3><table><tr><th>#<th>Name<th>Type<th>Null<th>Default"
-		for fld in self.db.get_table_fields(item.name):
+		for fld in self.db.get_table_fields(item.name, item.schema().name):
 			if fld.notnull: is_null_txt = "N"
 			else: is_null_txt = "Y"
 			if fld.hasdefault: default = fld.default
@@ -201,7 +242,7 @@ class ManagerWindow(QMainWindow):
 		html += "</table>"
 		
 		# constraints
-		constraints = self.db.get_table_constraints(item.name)
+		constraints = self.db.get_table_constraints(item.name, item.schema().name)
 		if len(constraints) != 0:
 			html += "<h3>Constraints</h3>"
 			html += "<table><tr><th>Name<th>Type<th>Attributes"		
@@ -214,7 +255,7 @@ class ManagerWindow(QMainWindow):
 			html += "</table>"
 		
 		# indexes
-		indexes = self.db.get_table_indexes(item.name)
+		indexes = self.db.get_table_indexes(item.name, item.schema().name)
 		if len(indexes) != 0:
 			html += "<h3>Indexes</h3>"
 			html += "<table><tr><th>Name<th>Attributes"
@@ -439,6 +480,7 @@ class ManagerWindow(QMainWindow):
 		self.tree.setRootIsDecorated(False)
 		self.tree.setEditTriggers( QAbstractItemView.SelectedClicked | QAbstractItemView.EditKeyPressed )
 		self.dock = QDockWidget("Database view", self)
+		self.dock.setObjectName("DbView")
 		self.dock.setFeatures(QDockWidget.DockWidgetMovable)
 		self.dock.setWidget(self.tree)
 		
