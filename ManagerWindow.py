@@ -15,6 +15,7 @@ from DlgCreateTable import DlgCreateTable
 from DlgLoadData import DlgLoadData
 from DlgDumpData import DlgDumpData
 from DlgAbout import DlgAbout
+from DlgSqlWindow import DlgSqlWindow
 from DlgTableProperties import DlgTableProperties
 from DatabaseModel import TableItem, SchemaItem, DatabaseModel
 from DbTableModel import DbTableModel
@@ -64,6 +65,7 @@ class ManagerWindow(QMainWindow):
 		self.connect(self.actionLoadData, SIGNAL("triggered(bool)"), self.loadData)
 		self.connect(self.actionDumpData, SIGNAL("triggered(bool)"), self.dumpData)
 		self.connect(self.actionDbInfo, SIGNAL("triggered(bool)"), self.dbInfo)
+		self.connect(self.actionSqlWindow, SIGNAL("triggered(bool)"), self.sqlWindow)
 		self.connect(self.actionDbDisconnect, SIGNAL("triggered(bool)"), self.dbDisconnect)
 		self.connect(self.actionAbout, SIGNAL("triggered(bool)"), self.about)
 		
@@ -448,6 +450,11 @@ class ManagerWindow(QMainWindow):
 		""" show about box """
 		dlg = DlgAbout(self)
 		dlg.exec_()
+		
+	def sqlWindow(self):
+		""" show sql window """
+		dlg = DlgSqlWindow(self, self.db)
+		dlg.exec_()
 	
 	
 	def setupUi(self):
@@ -490,6 +497,7 @@ class ManagerWindow(QMainWindow):
 	def createMenu(self):
 		
 		self.actionDbInfo = QAction("Info", self)
+		self.actionSqlWindow = QAction("SQL window", self)
 		self.actionDbDisconnect = QAction("Disconnect", self)
 		self.actionDbDisconnect.setEnabled(False)
 		
@@ -521,6 +529,7 @@ class ManagerWindow(QMainWindow):
 			self.connect(a, SIGNAL("triggered(bool)"), self.dbConnectSlot)
 		self.menuDb.addSeparator()
 		self.menuDb.addAction(self.actionDbInfo)
+		self.menuDb.addAction(self.actionSqlWindow)
 		self.menuDb.addSeparator()
 		self.menuDb.addAction(self.actionDbDisconnect)
 		

@@ -1,5 +1,4 @@
 higher priority:
-- SQL window
 - better discovery (without geometry_columns)
 - default prop for create table, max_length, primary key
 

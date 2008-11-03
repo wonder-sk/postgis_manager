@@ -1,5 +1,5 @@
 
-GEN_FILES = DlgCreateTable_ui.py DlgLoadData_ui.py resources.py DlgDumpData_ui.py DlgFieldProperties_ui.py DlgTableProperties_ui.py DlgAbout_ui.py
+GEN_FILES = DlgCreateTable_ui.py DlgLoadData_ui.py resources.py DlgDumpData_ui.py DlgFieldProperties_ui.py DlgTableProperties_ui.py DlgAbout_ui.py DlgSqlWindow_ui.py
 
 all: $(GEN_FILES)
 
@@ -20,6 +20,9 @@ DlgDumpData_ui.py: DlgDumpData.ui
 
 DlgAbout_ui.py: DlgAbout.ui
 	pyuic4 -o DlgAbout_ui.py DlgAbout.ui
+
+DlgSqlWindow_ui.py: DlgSqlWindow.ui
+	pyuic4 -o DlgSqlWindow_ui.py DlgSqlWindow.ui
 
 resources.py: resources.qrc
 	pyrcc4 -o resources.py resources.qrc
