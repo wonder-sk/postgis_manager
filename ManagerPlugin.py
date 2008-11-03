@@ -5,8 +5,6 @@ from qgis.core import *
 
 import resources
 
-import postgis_utils
-from ManagerWindow import ManagerWindow
 
 class ManagerPlugin:
 
@@ -22,6 +20,7 @@ class ManagerPlugin:
 		# Add toolbar button and menu item
 		self.iface.addToolBarIcon(self.action)
 		self.iface.addPluginToMenu("&PostGIS Manager", self.action)
+		
 	
 	def unload(self):
 		# Remove the plugin menu item and icon
@@ -30,5 +29,12 @@ class ManagerPlugin:
 	
 	def run(self): 
 		
+		try:
+			import psycopg2
+		except ImportError, e:
+			QMessageBox.information(self.iface.mainWindow(), "hey", "Couldn't import Python module 'psycopg2' for communication with PostgreSQL database. Without it you won't be able to run PostGIS manager.")
+			return
+		
+		from ManagerWindow import ManagerWindow
 		self.dlg = ManagerWindow(True)
 		self.dlg.show()

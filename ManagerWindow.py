@@ -273,7 +273,7 @@ class ManagerWindow(QMainWindow):
 		# load also map if qgis is enabled
 		# TODO
 		if self.useQgis:
-			self.loadMapPreview(ptr)
+			self.loadMapPreview(item)
 		
 		
 	def loadDbTable(self, item):
@@ -301,10 +301,6 @@ class ManagerWindow(QMainWindow):
 				qgis.core.QgsMapLayerRegistry.instance().addMapLayer(vl, False)
 				self.preview.setLayerSet( [ qgis.gui.QgsMapCanvasLayer(vl, True, False) ] )
 				self.preview.zoomToFullExtent()
-				
-				#from PreviewTableModel import PreviewTableModel
-				#tableModel = PreviewTableModel(vl, self)
-				#self.table.setModel(tableModel)
 				
 		else:
 			newLayerId = None
