@@ -1,6 +1,7 @@
 
 from DlgTableProperties_ui import Ui_DlgTableProperties
 from DlgFieldProperties import DlgFieldProperties
+from DlgCreateConstraint import DlgCreateConstraint
 from DlgCreateIndex import DlgCreateIndex
 
 from PyQt4.QtCore import *
@@ -9,27 +10,31 @@ from PyQt4.QtGui import *
 import postgis_utils
 
 
-class TableFieldsModel(QStandardItemModel):
-	
-	def __init__(self, parent):
-		QStandardItemModel.__init__(self, 0,4, parent)
-		self.header = ['#', 'Name', 'Type', 'Null', 'Default']
+class SimpleTableModel(QStandardItemModel):
+	def __init__(self, parent, header):
+		QStandardItemModel.__init__(self, 0, len(header), parent)
+		self.header = header
 		
 	def headerData(self, section, orientation, role):
 		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
 			return QVariant(self.header[section])
 		return QVariant()
 
-class TableIndexesModel(QStandardItemModel):
+class TableFieldsModel(SimpleTableModel):
 	
 	def __init__(self, parent):
-		QStandardItemModel.__init__(self, 0,2, parent)
-		self.header = ['Name', 'Column(s)']
+		SimpleTableModel.__init__(self, parent, ['#', 'Name', 'Type', 'Null', 'Default'])
+
+class TableConstraintsModel(SimpleTableModel):
+	
+	def __init__(self, parent):
+		SimpleTableModel.__init__(self, parent, ['Name', 'Type', 'Column(s)'])
+
+class TableIndexesModel(SimpleTableModel):
+	
+	def __init__(self, parent):
+		SimpleTableModel.__init__(self, parent, ['Name', 'Column(s)'])
 		
-	def headerData(self, section, orientation, role):
-		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-			return QVariant(self.header[section])
-		return QVariant()
 	
 
 
@@ -48,6 +53,10 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		self.viewFields.setModel(m)
 		self.populateFields()
 		
+		m = TableConstraintsModel(self)
+		self.viewConstraints.setModel(m)
+		self.populateConstraints()
+		
 		m = TableIndexesModel(self)
 		self.viewIndexes.setModel(m)
 		self.populateIndexes()
@@ -55,6 +64,9 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		self.connect(self.btnAddColumn, SIGNAL("clicked()"), self.addColumn)
 		self.connect(self.btnEditColumn, SIGNAL("clicked()"), self.editColumn)
 		self.connect(self.btnDeleteColumn, SIGNAL("clicked()"), self.deleteColumn)
+		
+		self.connect(self.btnAddConstraint, SIGNAL("clicked()"), self.addConstraint)
+		self.connect(self.btnDeleteConstraint, SIGNAL("clicked()"), self.deleteConstraint)
 		
 		self.connect(self.btnAddIndex, SIGNAL("clicked()"), self.createIndex)
 		self.connect(self.btnAddSpatialIndex, SIGNAL("clicked()"), self.createSpatialIndex)
@@ -188,6 +200,86 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 				return fld
 		return None
 		
+	
+	def populateConstraints(self):
+		m = self.viewConstraints.model()
+		m.clear()
+		
+		self.constraints = self.db.get_table_constraints(self.table, self.schema)
+		
+		for con in self.constraints:
+			# name
+			item_name = QStandardItem(con.name)
+			# type
+			if   con.con_type == con.TypeCheck: con_type = "Check"
+			elif con.con_type == con.TypeForeignKey: con_type = "Foreign key"
+			elif con.con_type == con.TypePrimaryKey: con_type = "Primary key"
+			elif con.con_type ==  con.TypeUnique: con_type = "Unique"
+			item_type = QStandardItem(con_type)
+			# key(s)
+			cols = ""
+			for col in con.keys:
+				if len(cols) != 0: cols += ", "
+				cols += self._field_by_number(col).name
+			item_columns = QStandardItem(cols)
+			m.appendRow( [ item_name, item_type, item_columns ] )
+
+
+	def addConstraint(self):
+		""" add primary key or unique constraint """
+		
+		dlg = DlgCreateConstraint(self, self.db, self.table, self.schema)
+		if not dlg.exec_():
+			return
+		
+		column = str(dlg.cboColumn.currentText())
+		
+		try:
+			if dlg.radPrimaryKey.isChecked():
+				self.db.table_add_primary_key(self.table, column, self.schema)
+			else:
+				self.db.table_add_unique_constraint(self.table, column, self.schema)
+		except postgis_utils.DbError, e:
+			QMessageBox.information(self, "sorry", "couldn't add constraint:\n"+e.message)
+			return
+	
+		# refresh constraints
+		self.populateConstraints()
+	
+	
+	def deleteConstraint(self):
+		""" delete a constraint """
+		
+		num = self.currentConstraint()
+		if num == -1:
+			return
+
+		m = self.viewConstraints.model()
+		con_name = m.item(num, 0).text()
+
+		res = QMessageBox.question(self, "are you sure", "really delete constraint '%s' ?" % con_name, QMessageBox.Yes | QMessageBox.No)
+		if res != QMessageBox.Yes:
+			return
+		
+		try:
+			self.db.table_delete_constraint(self.table, con_name, self.schema)
+		except postgis_utils.DbError, e:
+			QMessageBox.information(self, "sorry", "couldn't delete constraint:\n"+e.message)
+			return
+		
+		# refresh constraints
+		self.populateConstraints()
+
+	
+	def currentConstraint(self):
+		""" returns row index of selected index """
+		sel = self.viewConstraints.selectionModel()
+		indexes = sel.selectedRows()
+		if len(indexes) == 0:
+			QMessageBox.information(self, "sorry", "nothing selected")
+			return -1
+		return indexes[0].row()
+
 
 	def populateIndexes(self):
 		m = self.viewIndexes.model()

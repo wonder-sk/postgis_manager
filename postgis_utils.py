@@ -397,6 +397,24 @@ class GeoDB:
 			sql += "SET NOT NULL"
 		self._exec_sql_and_commit(sql)
 		
+	def table_add_primary_key(self, table, column, schema=None):
+		""" add a primery key (with one column) to a table """
+		table_name = self._table_name(schema, table)
+		sql = "ALTER TABLE %s ADD PRIMARY KEY (%s)" % (table_name, column)
+		self._exec_sql_and_commit(sql)
+		
+	def table_add_unique_constraint(self, table, column, schema=None):
+		""" add a unique constraint to a table """
+		table_name = self._table_name(schema, table)
+		sql = "ALTER TABLE %s ADD UNIQUE (%s)" % (table_name, column)
+		self._exec_sql_and_commit(sql)
+	
+	def table_delete_constraint(self, table, constraint, schema=None):
+		""" delete constraint in a table """
+		table_name = self._table_name(schema, table)
+		sql = "ALTER TABLE %s DROP CONSTRAINT %s" % (table_name, constraint)
+		self._exec_sql_and_commit(sql)
+		
 	def create_index(self, table, name, column, schema=None):
 		""" create index on one column using default options """
 		table_name = self._table_name(schema, table)

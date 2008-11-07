@@ -209,6 +209,14 @@ class ManagerWindow(QMainWindow):
 			html += "User has no privileges :-("
 		self.txtMetadata.setHtml(html)
 		
+	
+	def _field_by_number(self, num, fields):
+		""" return field specified by its number or None if doesn't exist """
+		for fld in fields:
+			if fld.num == num:
+				return fld
+		return None
+		
 		
 	def loadTableMetadata(self, item):
 		""" show metadata about table """
@@ -235,7 +243,8 @@ class ManagerWindow(QMainWindow):
 		
 		# fields
 		html += "<h3>Fields</h3><table><tr><th>#<th>Name<th>Type<th>Null<th>Default"
-		for fld in self.db.get_table_fields(item.name, item.schema().name):
+		fields = self.db.get_table_fields(item.name, item.schema().name)
+		for fld in fields:
 			if fld.notnull: is_null_txt = "N"
 			else: is_null_txt = "Y"
 			if fld.hasdefault: default = fld.default
@@ -247,22 +256,30 @@ class ManagerWindow(QMainWindow):
 		constraints = self.db.get_table_constraints(item.name, item.schema().name)
 		if len(constraints) != 0:
 			html += "<h3>Constraints</h3>"
-			html += "<table><tr><th>Name<th>Type<th>Attributes"		
+			html += "<table><tr><th>Name<th>Type<th>Column(s)"		
 			for con in constraints:
 				if   con.con_type == postgis_utils.TableConstraint.TypeCheck:      con_type = "Check"
 				elif con.con_type == postgis_utils.TableConstraint.TypePrimaryKey: con_type = "Primary key"
 				elif con.con_type == postgis_utils.TableConstraint.TypeForeignKey: con_type = "Foreign key"
 				elif con.con_type == postgis_utils.TableConstraint.TypeUnique:     con_type = "Unique"
-				html += "<tr><td>%s<td>%s<td>%s" % (con.name, con_type, con.keys)
+				keys = ""
+				for key in con.keys:
+					if len(keys) != 0: keys += ", "
+					keys += self._field_by_number(key, fields).name
+				html += "<tr><td>%s<td>%s<td>%s" % (con.name, con_type, keys)
 			html += "</table>"
 		
 		# indexes
 		indexes = self.db.get_table_indexes(item.name, item.schema().name)
 		if len(indexes) != 0:
 			html += "<h3>Indexes</h3>"
-			html += "<table><tr><th>Name<th>Attributes"
+			html += "<table><tr><th>Name<th>Column(s)"
 			for fld in indexes:
-				html += "<tr><td>%s<td>%s" % (fld.name, str(fld.columns))
+				keys = ""
+				for key in fld.columns:
+					if len(keys) != 0: keys += ", "
+					keys += self._field_by_number(key, fields).name
+				html += "<tr><td>%s<td>%s" % (fld.name, keys)
 			html += "</table>"
 			
 		if item.is_view:
@@ -273,7 +290,6 @@ class ManagerWindow(QMainWindow):
 		self.loadDbTable(item)
 		
 		# load also map if qgis is enabled
-		# TODO
 		if self.useQgis:
 			self.loadMapPreview(item)
 		

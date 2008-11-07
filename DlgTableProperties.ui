@@ -85,7 +85,7 @@
        <item>
         <widget class="QLabel" name="label_3" >
          <property name="text" >
-          <string>Primary, foreign keys and unique constraints:</string>
+          <string>Primary, foreign keys, unique and check constraints:</string>
          </property>
         </widget>
        </item>
@@ -99,9 +99,9 @@
        <item>
         <layout class="QHBoxLayout" >
          <item>
-          <widget class="QPushButton" name="btnAddPrimaryKey" >
+          <widget class="QPushButton" name="btnAddConstraint" >
            <property name="text" >
-            <string>Add primary key</string>
+            <string>Add primary key / unique</string>
            </property>
           </widget>
          </item>
@@ -209,7 +209,7 @@
   <tabstop>btnEditColumn</tabstop>
   <tabstop>btnDeleteColumn</tabstop>
   <tabstop>viewConstraints</tabstop>
-  <tabstop>btnAddPrimaryKey</tabstop>
+  <tabstop>btnAddConstraint</tabstop>
   <tabstop>btnDeleteConstraint</tabstop>
   <tabstop>viewIndexes</tabstop>
   <tabstop>btnAddIndex</tabstop>
