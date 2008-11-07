@@ -1,10 +1,13 @@
 
-GEN_FILES = DlgCreateTable_ui.py DlgLoadData_ui.py resources.py DlgDumpData_ui.py DlgFieldProperties_ui.py DlgTableProperties_ui.py DlgAbout_ui.py DlgSqlWindow_ui.py
+GEN_FILES = DlgCreateTable_ui.py DlgLoadData_ui.py resources.py DlgDumpData_ui.py DlgFieldProperties_ui.py DlgTableProperties_ui.py DlgAbout_ui.py DlgSqlWindow_ui.py DlgCreateIndex_ui.py
 
 all: $(GEN_FILES)
 
 DlgCreateTable_ui.py: DlgCreateTable.ui
 	pyuic4 -o DlgCreateTable_ui.py DlgCreateTable.ui
+
+DlgCreateIndex_ui.py: DlgCreateIndex.ui
+	pyuic4 -o DlgCreateIndex_ui.py DlgCreateIndex.ui
 
 DlgFieldProperties_ui.py: DlgFieldProperties.ui
 	pyuic4 -o DlgFieldProperties_ui.py DlgFieldProperties.ui

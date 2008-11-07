@@ -262,7 +262,7 @@ class ManagerWindow(QMainWindow):
 			html += "<h3>Indexes</h3>"
 			html += "<table><tr><th>Name<th>Attributes"
 			for fld in indexes:
-				html += "<tr><td>%s<td>%s" % (fld[0], fld[1])
+				html += "<tr><td>%s<td>%s" % (fld.name, str(fld.columns))
 			html += "</table>"
 			
 		if item.is_view:

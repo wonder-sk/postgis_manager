@@ -1,6 +1,7 @@
 
 from DlgTableProperties_ui import Ui_DlgTableProperties
 from DlgFieldProperties import DlgFieldProperties
+from DlgCreateIndex import DlgCreateIndex
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -19,6 +20,17 @@ class TableFieldsModel(QStandardItemModel):
 			return QVariant(self.header[section])
 		return QVariant()
 
+class TableIndexesModel(QStandardItemModel):
+	
+	def __init__(self, parent):
+		QStandardItemModel.__init__(self, 0,2, parent)
+		self.header = ['Name', 'Column(s)']
+		
+	def headerData(self, section, orientation, role):
+		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+			return QVariant(self.header[section])
+		return QVariant()
+	
 
 
 class DlgTableProperties(QDialog, Ui_DlgTableProperties):
@@ -36,10 +48,19 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		self.viewFields.setModel(m)
 		self.populateFields()
 		
+		m = TableIndexesModel(self)
+		self.viewIndexes.setModel(m)
+		self.populateIndexes()
+		
 		self.connect(self.btnAddColumn, SIGNAL("clicked()"), self.addColumn)
 		self.connect(self.btnEditColumn, SIGNAL("clicked()"), self.editColumn)
 		self.connect(self.btnDeleteColumn, SIGNAL("clicked()"), self.deleteColumn)
 		
+		self.connect(self.btnAddIndex, SIGNAL("clicked()"), self.createIndex)
+		self.connect(self.btnAddSpatialIndex, SIGNAL("clicked()"), self.createSpatialIndex)
+		self.connect(self.btnDeleteIndex, SIGNAL("clicked()"), self.deleteIndex)
+		
+
 		
 	def populateFields(self):
 		""" load field information from database """
@@ -152,11 +173,96 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		
 		try:
 			if data_type == "geometry":
-				self.db.table_delete_geometry_column(table, column, schema)
+				self.db.table_delete_geometry_column(self.table, column, self.schema)
 			else:
-				self.db.table_delete_column(table, column, schema)
+				self.db.table_delete_column(self.table, column, self.schema)
 				
 			self.populateFields()
 		except postgis_utils.DbError, e:
 			QMessageBox.information(self, "sorry", "couldn't delete column:\n"+e.message)
 
+	def _field_by_number(self, num):
+		""" return field specified by its number or None if doesn't exist """
+		for fld in self.fields:
+			if fld.num == num:
+				return fld
+		return None
+		
+
+	def populateIndexes(self):
+		m = self.viewIndexes.model()
+		m.clear()
+		
+		self.indexes = self.db.get_table_indexes(self.table, self.schema)
+		
+		for idx in self.indexes:
+			item_name = QStandardItem(idx.name)
+			cols = ""
+			for col in idx.columns:
+				if len(cols) != 0: cols += ", "
+				cols += self._field_by_number(col).name
+			item_columns = QStandardItem(cols)
+			m.appendRow( [ item_name, item_columns ] )
+
+
+	def createIndex(self):
+		""" create an index """
+		
+		dlg = DlgCreateIndex(self, self.db, self.table, self.schema)
+		if not dlg.exec_():
+			return
+		
+		# refresh indexes
+		self.populateIndexes()
+		
+		
+	def createSpatialIndex(self):
+		""" asks for every geometry column whether it should create an index for it """
+		
+		# TODO: first check whether the index doesn't exist already
+		try:
+			for fld in self.fields:
+				if fld.data_type == 'geometry':
+					res = QMessageBox.question(self, "create?", "create spatial index for field "+fld.name+"?", QMessageBox.Yes | QMessageBox.No)
+					if res == QMessageBox.Yes:
+						self.db.create_spatial_index(self.table, self.schema, fld.name)
+		except postgis_utils.DbError, e:
+			QMessageBox.information(self, "sorry", "couldn't add spatial index:\n"+e.message)
+			return
+	
+		# refresh indexes
+		self.populateIndexes()
+	
+	
+	def currentIndex(self):
+		""" returns row index of selected index """
+		sel = self.viewIndexes.selectionModel()
+		indexes = sel.selectedRows()
+		if len(indexes) == 0:
+			QMessageBox.information(self, "sorry", "nothing selected")
+			return -1
+		return indexes[0].row()
+	
+	
+	def deleteIndex(self):
+		""" delete currently selected index """
+		
+		num = self.currentIndex()
+		if num == -1:
+			return
+
+		m = self.viewIndexes.model()
+		idx_name = m.item(num, 0).text()
+
+		res = QMessageBox.question(self, "are you sure", "really delete index '%s' ?" % idx_name, QMessageBox.Yes | QMessageBox.No)
+		if res != QMessageBox.Yes:
+			return
+		
+		try:
+			self.db.delete_index(idx_name, self.schema)
+		except postgis_utils.DbError, e:
+			QMessageBox.information(self, "sorry", "couldn't delete column:\n"+e.message)
+			return
+		
+		# refresh indexes
+		self.populateIndexes()

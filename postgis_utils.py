@@ -29,8 +29,8 @@ class TableConstraint:
 	match_types = { "u" : "UNSPECIFIED", "f" : "FULL", "p" : "PARTIAL" }
 	
 	def __init__(self, row):
-		self.name, con_type, self.is_defferable, self.is_deffered, self.keys = row[:5]
-		
+		self.name, con_type, self.is_defferable, self.is_deffered, keys = row[:5]
+		self.keys = map(int, keys.split(' '))
 		self.con_type = TableConstraint.types[con_type]   # convert to enum
 		if self.con_type == TableConstraint.TypeCheck:
 			self.check_src = row[5]
@@ -40,6 +40,13 @@ class TableConstraint:
 			self.foreign_on_delete = TableConstraint.on_action[row[8]]
 			self.foreign_match_type = TableConstraint.match_types[row[9]]
 			self.foreign_keys = row[10]
+
+
+class TableIndex:
+	
+	def __init__(self, row):
+		self.name, columns = row
+		self.columns = map(int, columns.split(' '))
 
 
 
@@ -216,7 +223,10 @@ class GeoDB:
 		c = self.con.cursor()
 		sql = """SELECT relname, indkey FROM pg_class, pg_index WHERE pg_class.oid = pg_index.indexrelid AND pg_class.oid IN ( SELECT indexrelid FROM pg_index, pg_class WHERE pg_class.relname='%s' AND pg_class.oid=pg_index.indrelid AND indisunique != 't' AND indisprimary != 't' )""" % table
 		self._exec_sql(c, sql)
-		return c.fetchall()
+		indexes = []
+		for row in c.fetchall():
+			indexes.append(TableIndex(row))
+		return indexes
 	
 	
 	def get_table_constraints(self, table, schema='public'):
@@ -386,12 +396,22 @@ class GeoDB:
 		else:
 			sql += "SET NOT NULL"
 		self._exec_sql_and_commit(sql)
+		
+	def create_index(self, table, name, column, schema=None):
+		""" create index on one column using default options """
+		table_name = self._table_name(schema, table)
+		sql = "CREATE INDEX %s ON %s (%s)" % (name, table_name, column)
+		self._exec_sql_and_commit(sql)
 	
 	def create_spatial_index(self, table, schema=None, geom_column='the_geom'):
 		table_name = self._table_name(schema, table)
 		sql = "CREATE INDEX sidx_%s ON %s USING GIST(%s GIST_GEOMETRY_OPS)" % (table, table_name, geom_column)
 		self._exec_sql_and_commit(sql)
 		
+	def delete_index(self, name, schema=None):
+		index_name = self._table_name(schema, name)
+		sql = "DROP INDEX %s" % index_name
+		self._exec_sql_and_commit(sql)
 		
 	def get_database_privileges(self):
 		""" db privileges: (can create schemas, can create temp. tables) """
