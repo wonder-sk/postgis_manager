@@ -188,7 +188,7 @@ class ManagerWindow(QMainWindow):
 			html += '<tr><td>Use stats:<td>%s' % gis_info[5]
 			html += '</table>'
 		else:
-			html += '<p><img src="icons/warning-20px.png"> &nbsp; PostGIS support not enabled!</p>'
+			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; PostGIS support not enabled!</p>'
 			
 		priv = self.db.get_database_privileges()
 		html += '<h2>Privileges</h2>'

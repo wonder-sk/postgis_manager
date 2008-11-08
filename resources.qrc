@@ -4,5 +4,6 @@
         <file>icons/namespace.xpm</file>
         <file>icons/view.xpm</file>
 				<file>icons/postgis_elephant.png</file>
+				<file>icons/warning-20px.png</file>
     </qresource>
 </RCC>
