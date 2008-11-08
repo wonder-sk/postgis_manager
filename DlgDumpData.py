@@ -1,5 +1,5 @@
 
-from DlgDumpData_ui import Ui_DlgDumpData
+from ui.DlgDumpData_ui import Ui_DlgDumpData
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *

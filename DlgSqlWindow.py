@@ -1,5 +1,5 @@
 
-from DlgSqlWindow_ui import Ui_DlgSqlWindow
+from ui.DlgSqlWindow_ui import Ui_DlgSqlWindow
 from DlgDbError import DlgDbError
 
 from PyQt4.QtCore import *

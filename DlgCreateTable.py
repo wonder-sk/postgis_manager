@@ -1,5 +1,5 @@
 
-from DlgCreateTable_ui import Ui_DlgCreateTable
+from ui.DlgCreateTable_ui import Ui_DlgCreateTable
 from DlgFieldProperties import DlgFieldProperties
 from DlgDbError import DlgDbError
 

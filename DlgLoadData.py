@@ -1,5 +1,5 @@
 
-from DlgLoadData_ui import Ui_DlgLoadData
+from ui.DlgLoadData_ui import Ui_DlgLoadData
 from DlgDbError import DlgDbError
 
 from PyQt4.QtCore import *

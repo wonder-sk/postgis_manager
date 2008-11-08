@@ -1,5 +1,5 @@
 
-from DlgFieldProperties_ui import Ui_DlgFieldProperties
+from ui.DlgFieldProperties_ui import Ui_DlgFieldProperties
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *

@@ -1,5 +1,5 @@
 
-from DlgTableProperties_ui import Ui_DlgTableProperties
+from ui.DlgTableProperties_ui import Ui_DlgTableProperties
 from DlgFieldProperties import DlgFieldProperties
 from DlgCreateConstraint import DlgCreateConstraint
 from DlgCreateIndex import DlgCreateIndex

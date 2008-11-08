@@ -1,4 +1,4 @@
-from DlgDbError_ui import Ui_DlgDbError
+from ui.DlgDbError_ui import Ui_DlgDbError
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *

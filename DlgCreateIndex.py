@@ -1,5 +1,5 @@
 
-from DlgCreateIndex_ui import Ui_DlgCreateIndex
+from ui.DlgCreateIndex_ui import Ui_DlgCreateIndex
 from DlgDbError import DlgDbError
 
 from PyQt4.QtCore import *

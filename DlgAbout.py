@@ -1,5 +1,5 @@
 
-from DlgAbout_ui import Ui_DlgAbout
+from ui.DlgAbout_ui import Ui_DlgAbout
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *

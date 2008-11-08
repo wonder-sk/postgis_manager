@@ -1,5 +1,5 @@
 
-from DlgCreateConstraint_ui import Ui_DlgCreateConstraint
+from ui.DlgCreateConstraint_ui import Ui_DlgCreateConstraint
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *

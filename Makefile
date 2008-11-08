@@ -1,5 +1,5 @@
 
-UI_SOURCES=$(wildcard *.ui)
+UI_SOURCES=$(wildcard ui/*.ui)
 UI_FILES=$(patsubst %.ui,%_ui.py,$(UI_SOURCES))
 
 GEN_FILES = resources.py ${UI_FILES}
