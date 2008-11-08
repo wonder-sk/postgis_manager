@@ -62,6 +62,8 @@ class ManagerWindow(QMainWindow):
 		self.connect(self.actionSqlWindow, SIGNAL("triggered(bool)"), self.sqlWindow)
 		self.connect(self.actionDbDisconnect, SIGNAL("triggered(bool)"), self.dbDisconnect)
 		self.connect(self.actionAbout, SIGNAL("triggered(bool)"), self.about)
+		# text metadata
+		self.connect(self.txtMetadata, SIGNAL("anchorClicked(const QUrl&)"), self.metadataLinkClicked)
 		
 		# connect to database selected last time
 		# but first let the manager chance to show the window
@@ -139,8 +141,8 @@ class ManagerWindow(QMainWindow):
 		self.tree.expandAll()
 		self.tree.resizeColumnToContents(0)
 		
-		# TODO: warning if postgis in DB is not enabled
-	
+		self.dbInfo()
+		
 	
 	def dbDisconnect(self):
 		
@@ -169,23 +171,40 @@ class ManagerWindow(QMainWindow):
 	def dbInfo(self):
 		""" retrieve information about current server / database """
 		info = self.db.get_info()
-		msg = "Server version:\n"+info+"\n\n"
 		
+		html  = '<div style="background-color:#ccffcc"><h1>&nbsp;&nbsp;%s</h1></div>' % self.db.dbname
+		html += '<div><h2>Connection details</h2><table>'
+		html += '<tr><td width="100">Host:<td>%s<tr><td>User:<td>%s' % (self.db.host, self.db.user)
+		html += '</table>'
+		
+		html += '<h2>PostGIS</h2>'
 		if self.db.has_postgis:
 			gis_info = self.db.get_postgis_info()
-			msg += "PostGIS:\n- library: %s\n- scripts: %s\n- GEOS: %s\n- Proj: %s\n- use stats: %s" % (gis_info[0], gis_info[1], gis_info[3], gis_info[4], gis_info[5])
+			html += '<table>'
+			html += '<tr><td width="100">Library:<td>%s' % gis_info[0]
+			html += '<tr><td>Scripts:<td>%s' % gis_info[1]
+			html += '<tr><td>GEOS:<td>%s' % gis_info[3]
+			html += '<tr><td>Proj:<td>%s' % gis_info[4]
+			html += '<tr><td>Use stats:<td>%s' % gis_info[5]
+			html += '</table>'
 		else:
-			msg += "PostGIS support not enabled!"
+			html += '<p><img src="icons/warning-20px.png"> &nbsp; PostGIS support not enabled!</p>'
 			
 		priv = self.db.get_database_privileges()
+		html += '<h2>Privileges</h2>'
 		if priv[0] or priv[1]:
-			msg += "\n\nUser has privileges:\n"
-			if priv[0]: msg += "- create new schemas\n"
-			if priv[1]: msg += "- create temporary tables\n"
+			html += "<div>User has privileges:<ul>"
+			if priv[0]: html += "<li> create new schemas"
+			if priv[1]: html += "<li> create temporary tables"
+			html += "</ul></div>"
 		else:
-			msg += "User has no privileges :-("
+			html += "<div>User has no privileges :-(</div>"
 		
-		QMessageBox.information(self, "db info", msg)
+		html += '<h2>Server version</h2>' + info
+				
+		self.txtMetadata.setHtml(html)
+		
+		self.unloadDbTable()
 
 	
 	def refreshTable(self):
@@ -201,20 +220,21 @@ class ManagerWindow(QMainWindow):
 			self.unloadDbTable()
 		elif isinstance(item, TableItem):
 			self.loadTableMetadata(item)
-	
+			
 	
 	def loadSchemaMetadata(self, item):
 		""" show metadata about schema """	
-		html = "<h1>%s</h1> (schema)<p>Tables: %d<br>Owner: %s" % (item.name, item.childCount(), item.owner)
+		html  = '<div style="background-color:#ffcccc"><h1>&nbsp;&nbsp;%s</h1></div>' % item.name
+		html += "<p> (schema)<p>Tables: %d<br>Owner: %s" % (item.childCount(), item.owner)
 		html += "<br><br>"
 		priv = self.db.get_schema_privileges(item.name)
 		if priv[0] or priv[1]:
-			html += "User has privileges:<ul>"
+			html += "<p>User has privileges:<ul>"
 			if priv[0]: html += "<li>create new objects"
 			if priv[1]: html += "<li>access objects"
-			html += "</ul>"
+			html += "</ul></p>"
 		else:
-			html += "User has no privileges :-("
+			html += "<p>User has no privileges :-(</p>"
 		self.txtMetadata.setHtml(html)
 		
 	
@@ -236,10 +256,25 @@ class ManagerWindow(QMainWindow):
 			reltype = "View"
 		else:
 			reltype = "Table"
-		html = "<h1>%s</h1> (%s)<br>Owner: %s<br>Rows (estimation): %d<br>Pages: %d<p>Geometry: %s" % (item.name, reltype, item.owner, item.row_count, item.page_count, item.geom_type)
+			
+		if not hasattr(item, 'row_count_real'):
+			try:
+				item.row_count_real = self.db.get_table_rows(item.name, item.schema().name)
+			except postgis_utils.DbError, e:
+				self.db.con.rollback()
+				# possibly we don't have permission for this
+				item.row_count_real = '(unknown)'
+			
+		html  = '<div style="background-color:#ccccff"><h1>&nbsp;&nbsp;%s</h1></div>' % item.name
+		html += '<div style="margin-top:30px; margin-left:10px;"> <table>'
+		html += '<tr><td width="150">Relation type:<td>%s' % reltype
+		html += '<tr><td>Owner:<td>%s' % item.owner
+		html += '<tr><td>Rows (estimation):<td>%d' % item.row_count
+		html += '<tr><td>Rows (counted):<td>%s' % item.row_count_real
+		html += '<tr><td>Pages:<td>%d' % item.page_count
 		
 		# permissions
-		html += "<p>Privileges: "
+		html += "<tr><td>Privileges:<td>"
 		priv = self.db.get_table_privileges(item.name, item.schema().name)
 		if priv[0] or priv[1] or priv[2] or priv[3]:
 			if priv[0]: html += "select "
@@ -248,23 +283,40 @@ class ManagerWindow(QMainWindow):
 			if priv[3]: html += "delete "
 		else:
 			html += "<i>none</i>"
+		html += '</table></div>'
+		
+		html += '<div style="margin-top:30px; margin-left:10px;"><h2>PostGIS</h2>'
+		if item.geom_type:
+			html += '<table><tr><td>Column:<td>%s<tr><td>Geometry:<td>%s</table>' % (item.geom_column, item.geom_type)
+		else:
+			html += '<p>This is not a spatial table.</p>'
+		html += '</div>'
+		
+		constraints = self.db.get_table_constraints(item.name, item.schema().name)
 		
 		# fields
-		html += "<h3>Fields</h3><table><tr><th>#<th>Name<th>Type<th>Null<th>Default"
+		html += '<div style="margin-top:30px; margin-left:10px"><h2>Fields</h2>'
+		html += '<table><tr bgcolor="#dddddd">'
+		html += '<th width="30"># <th width="180">Name <th width="100">Type <th width="50">Length<th width="50">Null <th>Default '
 		fields = self.db.get_table_fields(item.name, item.schema().name)
 		for fld in fields:
-			if fld.notnull: is_null_txt = "N"
-			else: is_null_txt = "Y"
-			if fld.hasdefault: default = fld.default
-			else: default=''
-			html += "<tr><td>%s<td>%s<td>%s<td>%s<td>%s" % (fld.num, fld.name, fld.data_type, is_null_txt, default)
-		html += "</table>"
+			is_null_txt = "N" if fld.notnull else "Y"
+			default = fld.default if fld.hasdefault else ""
+			fldtype = fld.data_type if fld.modifier == -1 else "%s (%d)" % (fld.data_type, fld.modifier)
+			
+			# find out whether it's part of primary key
+			pk_style = ''
+			for con in constraints:
+				if con.con_type == postgis_utils.TableConstraint.TypePrimaryKey and fld.num in con.keys:
+					pk_style = ' style="text-decoration:underline;"'
+					break
+			html += '<tr><td align="center">%s<td%s>%s<td>%s<td align="center">%d<td align="center">%s<td>%s' % (fld.num, pk_style, fld.name, fldtype, fld.char_max_len, is_null_txt, default)
+		html += "</table></div> "
 		
 		# constraints
-		constraints = self.db.get_table_constraints(item.name, item.schema().name)
 		if len(constraints) != 0:
-			html += "<h3>Constraints</h3>"
-			html += "<table><tr><th>Name<th>Type<th>Column(s)"		
+			html += '<div style=" margin-top:30px; margin-left:10px"><br><h2>Constraints</h2>'
+			html += '<table><tr bgcolor="#dddddd"><th width="180">Name<th width="100">Type<th width="180">Column(s)'
 			for con in constraints:
 				if   con.con_type == postgis_utils.TableConstraint.TypeCheck:      con_type = "Check"
 				elif con.con_type == postgis_utils.TableConstraint.TypePrimaryKey: con_type = "Primary key"
@@ -272,26 +324,28 @@ class ManagerWindow(QMainWindow):
 				elif con.con_type == postgis_utils.TableConstraint.TypeUnique:     con_type = "Unique"
 				keys = ""
 				for key in con.keys:
-					if len(keys) != 0: keys += ", "
+					if len(keys) != 0: keys += "<br>"
 					keys += self._field_by_number(key, fields).name
 				html += "<tr><td>%s<td>%s<td>%s" % (con.name, con_type, keys)
-			html += "</table>"
+			html += "</table></div>"
 		
 		# indexes
 		indexes = self.db.get_table_indexes(item.name, item.schema().name)
 		if len(indexes) != 0:
-			html += "<h3>Indexes</h3>"
-			html += "<table><tr><th>Name<th>Column(s)"
+			html += '<div style=" margin-top:30px; margin-left:10px"><h2>Indexes</h2>'
+			html += '<table><tr bgcolor="#dddddd"><th width="180">Name<th width="180">Column(s)'
 			for fld in indexes:
 				keys = ""
 				for key in fld.columns:
-					if len(keys) != 0: keys += ", "
+					if len(keys) != 0: keys += "<br>"
 					keys += self._field_by_number(key, fields).name
 				html += "<tr><td>%s<td>%s" % (fld.name, keys)
-			html += "</table>"
+			html += "</table></div>"
 			
 		if item.is_view:
-			html += "<h3>View definition</h3>%s" % self.db.get_view_definition(item.name, item.schema().name)
+			html += '<div style=" margin-top:30px; margin-left:10px"><br><h2>View definition</h2>'
+			html += '<p>%s</p>' % self.db.get_view_definition(item.name, item.schema().name)
+			html += '</div>'
 		
 		self.txtMetadata.setHtml(html)
 		
@@ -300,6 +354,9 @@ class ManagerWindow(QMainWindow):
 		# load also map if qgis is enabled
 		if self.useQgis:
 			self.loadMapPreview(item)
+			
+	def metadataLinkClicked(self, url):
+		print str(url.path())
 		
 	
 	def unloadDbTable(self):
@@ -314,7 +371,7 @@ class ManagerWindow(QMainWindow):
 		if self.table.model() and self.table.model().table == item.name and self.table.model().schema == item.schema().name:
 			return
 		
-		newModel = DbTableModel(self.db, item.schema().name, item.name)
+		newModel = DbTableModel(self.db, item.schema().name, item.name, item.row_count_real)
 		self.table.setModel(newModel)
 		del self.tableModel # ensure that old model gets deleted
 		self.tableModel = newModel
@@ -498,6 +555,7 @@ class ManagerWindow(QMainWindow):
 		self.resize(QSize(700,500).expandedTo(self.minimumSizeHint()))
 		
 		self.txtMetadata = QTextBrowser()
+		self.txtMetadata.setOpenLinks(False)
 		self.table = QTableView(self)
 		self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
 		
@@ -530,7 +588,7 @@ class ManagerWindow(QMainWindow):
 	
 	def createMenu(self):
 		
-		self.actionDbInfo = QAction("Info", self)
+		self.actionDbInfo = QAction("Show info", self)
 		self.actionSqlWindow = QAction("SQL window", self)
 		self.actionDbDisconnect = QAction("Disconnect", self)
 		self.actionDbDisconnect.setEnabled(False)

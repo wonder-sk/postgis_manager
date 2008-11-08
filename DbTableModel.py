@@ -8,7 +8,7 @@ from types import StringType, NoneType
 
 class DbTableModel(QAbstractTableModel):
 
-	def __init__(self, db, schema, table, parent=None):
+	def __init__(self, db, schema, table, row_count_real, parent=None):
 		QAbstractTableModel.__init__(self, parent)
 		
 		self.db = db
@@ -22,7 +22,7 @@ class DbTableModel(QAbstractTableModel):
 				self.fields.append(fld.name)
 		fields_txt = ", ".join(self.fields)
 		
-		self.row_count = self.db.get_table_rows(self.table, self.schema)
+		self.row_count = row_count_real #self.db.get_table_rows(self.table, self.schema)
 		self.col_count = len(self.fields)
 		
 		# create named cursor and run query

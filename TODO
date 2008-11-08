@@ -2,8 +2,6 @@ higher priority:
 - default prop for create table, max_length, primary key
 - recommendations: vacuum, PK, spatialindex, geom to geometry_columns
 - warnings: no privileges (select / edit), incorrect postgis upgrade
-- common error dialog when a query fails
-- nice metadata display
 
 low priority:
 - create views
