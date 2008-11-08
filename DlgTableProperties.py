@@ -3,6 +3,7 @@ from DlgTableProperties_ui import Ui_DlgTableProperties
 from DlgFieldProperties import DlgFieldProperties
 from DlgCreateConstraint import DlgCreateConstraint
 from DlgCreateIndex import DlgCreateIndex
+from DlgDbError import DlgDbError
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -165,7 +166,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 				
 			self.populateFields()
 		except postgis_utils.DbError, e:
-			QMessageBox.critical(self, "sorry", "couln't alter column:\n%s\nQUERY:\n%s" % (e.message, e.query))
+			DlgDbError.showError(e, self)
 	
 	
 	def deleteColumn(self):
@@ -191,7 +192,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 				
 			self.populateFields()
 		except postgis_utils.DbError, e:
-			QMessageBox.information(self, "sorry", "couldn't delete column:\n"+e.message)
+			DlgDbError.showError(e, self)
 
 	def _field_by_number(self, num):
 		""" return field specified by its number or None if doesn't exist """
@@ -240,7 +241,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 			else:
 				self.db.table_add_unique_constraint(self.table, column, self.schema)
 		except postgis_utils.DbError, e:
-			QMessageBox.information(self, "sorry", "couldn't add constraint:\n"+e.message)
+			DlgDbError.showError(e, self)
 			return
 	
 		# refresh constraints
@@ -264,7 +265,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		try:
 			self.db.table_delete_constraint(self.table, con_name, self.schema)
 		except postgis_utils.DbError, e:
-			QMessageBox.information(self, "sorry", "couldn't delete constraint:\n"+e.message)
+			DlgDbError.showError(e, self)
 			return
 		
 		# refresh constraints
@@ -319,7 +320,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 					if res == QMessageBox.Yes:
 						self.db.create_spatial_index(self.table, self.schema, fld.name)
 		except postgis_utils.DbError, e:
-			QMessageBox.information(self, "sorry", "couldn't add spatial index:\n"+e.message)
+			DlgDbError.showError(e, self)
 			return
 	
 		# refresh indexes
@@ -353,7 +354,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		try:
 			self.db.delete_index(idx_name, self.schema)
 		except postgis_utils.DbError, e:
-			QMessageBox.information(self, "sorry", "couldn't delete column:\n"+e.message)
+			DlgDbError.showError(e, self)
 			return
 		
 		# refresh indexes

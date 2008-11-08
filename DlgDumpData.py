@@ -7,8 +7,6 @@ from PyQt4.QtGui import *
 import subprocess
 import re
 
-from postgis_utils import DbError
-
 
 class DlgDumpData(QDialog, Ui_DlgDumpData):
 

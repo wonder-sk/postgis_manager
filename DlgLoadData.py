@@ -1,5 +1,6 @@
 
 from DlgLoadData_ui import Ui_DlgLoadData
+from DlgDbError import DlgDbError
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -168,7 +169,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 			QMessageBox.critical(self, "OSError", "Message: %s\nFilename: %s" % (e.message, e.filename))
 			return
 		except DbError, e:
-			QMessageBox.critical(self, "DbError", "Message: %s\nQuery: %s" % (e.message, e.query))
+			DlgDbError.showError(e, self)
 			return
 		
 		# check whether it has run without errors

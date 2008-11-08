@@ -1,5 +1,6 @@
 
 from DlgSqlWindow_ui import Ui_DlgSqlWindow
+from DlgDbError import DlgDbError
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -57,5 +58,6 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 		except postgis_utils.DbError, e:
 			self.db.con.rollback()
 			QApplication.restoreOverrideCursor()
-			QMessageBox.critical(self, "sorry", "you have a problem:\n%s\nQUERY:\n%s" % (e.message, e.query))
+			
+			DlgDbError.showError(e, self)
 		

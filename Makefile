@@ -1,35 +1,15 @@
 
-GEN_FILES = DlgCreateTable_ui.py DlgLoadData_ui.py resources.py DlgDumpData_ui.py DlgFieldProperties_ui.py DlgTableProperties_ui.py DlgAbout_ui.py DlgSqlWindow_ui.py DlgCreateIndex_ui.py DlgCreateConstraint_ui.py
+UI_SOURCES=$(wildcard *.ui)
+UI_FILES=$(patsubst %.ui,%_ui.py,$(UI_SOURCES))
+
+GEN_FILES = resources.py ${UI_FILES}
 
 all: $(GEN_FILES)
 
-DlgCreateTable_ui.py: DlgCreateTable.ui
-	pyuic4 -o DlgCreateTable_ui.py DlgCreateTable.ui
 
-DlgCreateConstraint_ui.py: DlgCreateConstraint.ui
-	pyuic4 -o DlgCreateConstraint_ui.py DlgCreateConstraint.ui
-
-DlgCreateIndex_ui.py: DlgCreateIndex.ui
-	pyuic4 -o DlgCreateIndex_ui.py DlgCreateIndex.ui
-
-DlgFieldProperties_ui.py: DlgFieldProperties.ui
-	pyuic4 -o DlgFieldProperties_ui.py DlgFieldProperties.ui
-
-DlgTableProperties_ui.py: DlgTableProperties.ui
-	pyuic4 -o DlgTableProperties_ui.py DlgTableProperties.ui
-
-DlgLoadData_ui.py: DlgLoadData.ui
-	pyuic4 -o DlgLoadData_ui.py DlgLoadData.ui
-
-DlgDumpData_ui.py: DlgDumpData.ui
-	pyuic4 -o DlgDumpData_ui.py DlgDumpData.ui
-
-DlgAbout_ui.py: DlgAbout.ui
-	pyuic4 -o DlgAbout_ui.py DlgAbout.ui
-
-DlgSqlWindow_ui.py: DlgSqlWindow.ui
-	pyuic4 -o DlgSqlWindow_ui.py DlgSqlWindow.ui
-
+$(UI_FILES): %_ui.py: %.ui
+	pyuic4 -o $@ $<
+	
 resources.py: resources.qrc
 	pyrcc4 -o resources.py resources.qrc
 

@@ -1,6 +1,7 @@
 
 from DlgCreateTable_ui import Ui_DlgCreateTable
 from DlgFieldProperties import DlgFieldProperties
+from DlgDbError import DlgDbError
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -205,7 +206,7 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 				self.emit(SIGNAL("databaseChanged()"))
 			except postgis_utils.DbError, e:
 				self.db.con.rollback()
-				QMessageBox.critical(self, "DB error", e.message+"\nSQL query:\n"+e.query)
+				DlgDbError.showError(e, self)
 				return
 					
 		else:

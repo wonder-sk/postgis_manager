@@ -1,5 +1,6 @@
 
 from DlgCreateIndex_ui import Ui_DlgCreateIndex
+from DlgDbError import DlgDbError
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -47,7 +48,7 @@ class DlgCreateIndex(QDialog, Ui_DlgCreateIndex):
 		try:
 			self.db.create_index(self.table, name, column, self.schema)
 		except postgis_utils.DbError, e:
-			QMessageBox.critical(self, "error", "Message:\n%s\nQuery:\n%s\n" % (e.message, e.query))
+			DlgDbError.showError(e, self)
 			return
 
 		self.accept()

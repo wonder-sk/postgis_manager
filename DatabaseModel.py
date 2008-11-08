@@ -1,4 +1,6 @@
 
+from DlgDbError import DlgDbError
+
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
@@ -58,7 +60,7 @@ class DatabaseItem(TreeItem):
 		try:
 			list_schemas = db.list_schemas()
 		except postgis_utils.DbError, e:
-			QMessageBox.critical(None, "error", "couldn't get schemas.\n"+e.message)
+			DlgDbError.showError(e, self)
 			return
 		
 		schemas = {} # name : item
@@ -71,7 +73,7 @@ class DatabaseItem(TreeItem):
 		try:
 			list_tables = db.list_geotables()
 		except postgis_utils.DbError, e:
-			QMessageBox.critical(None, "error", "couldn't get list of tables.\n"+e.message)
+			DlgDbError.showError(e, self)
 			return
 		
 		# add all tables
@@ -244,7 +246,7 @@ class DatabaseModel(QAbstractItemModel):
 				self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex &)'), index, index)
 				return True
 			except postgis_utils.DbError, e:
-				QMessageBox.critical(None, "error", "Couldn't rename:\nMessage: %s\nQuery: %s" % (e.message, e.query) )
+				DlgDbError.showError(e, self)
 				return False
 			
 		elif isinstance(item, SchemaItem):
@@ -254,7 +256,7 @@ class DatabaseModel(QAbstractItemModel):
 				self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex &)'), index, index)
 				return True
 			except postgis_utils.DbError, e:
-				QMessageBox.critical(None, "error", "Couldn't rename schema:\nMessage: %s\nQuery: %s" % (e.message, e.query) )
+				DlgDbError.showError(e, self)
 				return False
 			
 		else:

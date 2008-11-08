@@ -19,6 +19,8 @@ from DlgSqlWindow import DlgSqlWindow
 from DlgTableProperties import DlgTableProperties
 from DatabaseModel import TableItem, SchemaItem, DatabaseModel
 from DbTableModel import DbTableModel
+from DlgDbError import DlgDbError
+
 import resources
 import postgis_utils
 
@@ -395,7 +397,7 @@ class ManagerWindow(QMainWindow):
 			self.loadTableMetadata(ptr)
 			QMessageBox.information(self, "good", "table has been emptied.")
 		except postgis_utils.DbError, e:
-			QMessageBox.critical(self, "error", "Message:\n%s\nQuery:\n%s\n" % (e.message, e.query))
+			DlgDbError.showError(e, self)
 		
 
 	def deleteTable(self):
@@ -424,7 +426,7 @@ class ManagerWindow(QMainWindow):
 			self.refreshTable()
 			QMessageBox.information(self, "good", "table/view deleted.")
 		except postgis_utils.DbError, e:
-			QMessageBox.critical(self, "error", "Message:\n%s\nQuery:\n%s\n" % (e.message, e.query))
+			DlgDbError.showError(e, self)
 		
 	
 	def createSchema(self):
