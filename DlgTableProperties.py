@@ -118,6 +118,8 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		default = str(dlg.editDefault.text())
 		
 		new_field = postgis_utils.TableField(name, data_type, is_null, default)
+		
+		self.emit(SIGNAL("aboutToChangeTable()"))
 	
 		try:
 			# add column to table
@@ -152,6 +154,8 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		new_is_null = dlg.chkNull.isChecked()
 		new_default = str(dlg.editDefault.text())
 		
+		self.emit(SIGNAL("aboutToChangeTable()"))
+		
 		try:
 			if new_name != col.name:
 				self.db.table_column_rename(self.table, col.name, new_name, self.schema)
@@ -183,6 +187,8 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		res = QMessageBox.question(self, "are you sure", "really delete column '%s' ?" % column, QMessageBox.Yes | QMessageBox.No)
 		if res != QMessageBox.Yes:
 			return
+		
+		self.emit(SIGNAL("aboutToChangeTable()"))
 		
 		try:
 			if data_type == "geometry":
@@ -235,6 +241,8 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		
 		column = str(dlg.cboColumn.currentText())
 		
+		self.emit(SIGNAL("aboutToChangeTable()"))
+		
 		try:
 			if dlg.radPrimaryKey.isChecked():
 				self.db.table_add_primary_key(self.table, column, self.schema)
@@ -261,6 +269,8 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		res = QMessageBox.question(self, "are you sure", "really delete constraint '%s' ?" % con_name, QMessageBox.Yes | QMessageBox.No)
 		if res != QMessageBox.Yes:
 			return
+		
+		self.emit(SIGNAL("aboutToChangeTable()"))
 		
 		try:
 			self.db.table_delete_constraint(self.table, con_name, self.schema)
@@ -301,10 +311,12 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 	def createIndex(self):
 		""" create an index """
 		
+		self.emit(SIGNAL("aboutToChangeTable()"))
+		
 		dlg = DlgCreateIndex(self, self.db, self.table, self.schema)
 		if not dlg.exec_():
 			return
-		
+				
 		# refresh indexes
 		self.populateIndexes()
 		
@@ -313,6 +325,9 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		""" asks for every geometry column whether it should create an index for it """
 		
 		# TODO: first check whether the index doesn't exist already
+		
+		self.emit(SIGNAL("aboutToChangeTable()"))
+		
 		try:
 			for fld in self.fields:
 				if fld.data_type == 'geometry':
@@ -350,6 +365,8 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		res = QMessageBox.question(self, "are you sure", "really delete index '%s' ?" % idx_name, QMessageBox.Yes | QMessageBox.No)
 		if res != QMessageBox.Yes:
 			return
+		
+		self.emit(SIGNAL("aboutToChangeTable()"))
 		
 		try:
 			self.db.delete_index(idx_name, self.schema)

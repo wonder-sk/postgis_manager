@@ -198,6 +198,7 @@ class ManagerWindow(QMainWindow):
 		
 		if isinstance(item, SchemaItem):
 			self.loadSchemaMetadata(item)
+			self.unloadDbTable()
 		elif isinstance(item, TableItem):
 			self.loadTableMetadata(item)
 	
@@ -300,6 +301,12 @@ class ManagerWindow(QMainWindow):
 		if self.useQgis:
 			self.loadMapPreview(item)
 		
+	
+	def unloadDbTable(self):
+		
+		self.table.setModel(None)
+		self.tableModel = None
+
 		
 	def loadDbTable(self, item):
 		
@@ -354,11 +361,15 @@ class ManagerWindow(QMainWindow):
 			return
 		
 		dlg = DlgTableProperties(self.db, ptr.schema().name, ptr.name)
+		self.connect(dlg, SIGNAL("aboutToChangeTable()"), self.aboutToChangeTable)
 		dlg.exec_()
 		
 		# update info
 		self.loadTableMetadata(ptr)
-		
+	
+	def aboutToChangeTable(self):
+		""" table is going to be changed, we must close currently opened cursor """
+		self.unloadDbTable()
 		
 	def currentDatabaseItem(self):
 		""" returns reference to item currently selected or displays an error """
