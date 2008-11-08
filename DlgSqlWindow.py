@@ -20,6 +20,7 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 		self.restoreGeometry(settings.value("/PostGIS_Manager/sql_geometry").toByteArray())
 		
 		self.connect(self.btnExecute, SIGNAL("clicked()"), self.executeSql)
+		self.connect(self.btnClear, SIGNAL("clicked()"), self.clearSql)
 		self.connect(self.buttonBox.button(QDialogButtonBox.Close), SIGNAL("clicked()"), self.close)
 		
 		m = QStandardItemModel(self)
@@ -33,6 +34,8 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 		
 		QDialog.closeEvent(self, e)
 		
+	def clearSql(self):
+		self.editSql.setPlainText(QString())
 
 	def executeSql(self):
 		
@@ -50,6 +53,7 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 				m.appendRow( [ QStandardItem(str(i)) for i in row ] )
 			c.close()
 			QApplication.restoreOverrideCursor()
+			QMessageBox.information(self, "finished", "query returned %d rows." % c.rowcount)
 		except postgis_utils.DbError, e:
 			self.db.con.rollback()
 			QApplication.restoreOverrideCursor()

@@ -47,12 +47,21 @@ def main():
 	
 	# add testing entry
 	settings = QSettings()
+	
 	key = "/PostgreSQL/connections/test DB"
 	settings.setValue(key + "/host", QVariant("localhost"))
 	settings.setValue(key + "/port", QVariant(5432))
 	settings.setValue(key + "/database", QVariant("gis"))
 	settings.setValue(key + "/username", QVariant("gisak"))
 	settings.setValue(key + "/password", QVariant("g"))
+	
+	key = "/PostgreSQL/connections/urtax"
+	settings.setValue(key + "/host", QVariant("localhost"))
+	settings.setValue(key + "/port", QVariant(5431))
+	settings.setValue(key + "/database", QVariant("qgismapper"))
+	settings.setValue(key + "/username", QVariant("qgismapper"))
+	settings.setValue(key + "/password", QVariant("g"))
+	
 	settings.setValue("/PostgreSQL/connections/selected", QVariant("test DB"))
 	
 	app = QApplication(sys.argv)

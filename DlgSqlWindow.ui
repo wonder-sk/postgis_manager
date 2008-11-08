@@ -52,6 +52,13 @@
        </property>
       </spacer>
      </item>
+     <item>
+      <widget class="QPushButton" name="btnClear" >
+       <property name="text" >
+        <string>&amp;Clear</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
@@ -89,6 +96,7 @@
  <tabstops>
   <tabstop>editSql</tabstop>
   <tabstop>btnExecute</tabstop>
+  <tabstop>btnClear</tabstop>
   <tabstop>viewResult</tabstop>
   <tabstop>buttonBox</tabstop>
  </tabstops>

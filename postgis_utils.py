@@ -90,6 +90,14 @@ class GeoDB:
 		except psycopg2.OperationalError, e:
 			raise DbError(e.message)
 		
+		# check whether DB has postgis support
+		try:
+			self.get_postgis_info()
+			self.has_postgis = True
+		except DbError, e:
+			self.con.rollback()
+			self.has_postgis = False
+		
 	def con_info(self):
 		con_str = ''
 		if self.host:   con_str += "host='%s' "     % self.host
@@ -130,27 +138,6 @@ class GeoDB:
 		"""
 			get list of tables with schemas, whether user has privileges, whether table has geometry column(s) etc.
 			
-			pg_class:
-			- relname = nazov relacie (tabulka / view / index / ....)
-			- relnamespace = oid schemy
-			- reltype = oid typu relacie
-			- relowner = oid vlastnika
-			- relpages = kolko stranok zabera (stranka = 8kb)
-			- reltuples = odhad planovaca kolko ma riadkov
-			- relkind = r = ordinary table, i = index, S = sequence, v = view, c = composite type, s = special, t = TOAST table 
-			
-			- relnatts = pocet stlpcov tabulky (vid pg_attribute)
-			- relchecks = pocet constraintov (vid pg_constraint)
-			- reltriggers = pocet triggerov (vid pg_trigger)
-			- relacl = privilegia
-			
-			pg_namespace:
-			- nspname = nazov schemy
-			- nspowner = oid vlastnika
-			- nspacl = privilegia
-			
-			funkcia - pg_get_userbyid(relowner)
-			
 			geometry_columns:
 			- f_table_schema
 			- f_table_name
@@ -158,10 +145,6 @@ class GeoDB:
 			- coord_dimension
 			- srid
 			- type
-			
-			checking privileges:
-			- has_schema_privilege(pg_namespace.nspname,'usage')
-			- has_table_privilege('\"'||pg_namespace.nspname||'\".\"'||pg_class.relname||'\"','select')
 		"""
 		c = self.con.cursor()
 		
@@ -170,17 +153,44 @@ class GeoDB:
 		else:
 			schema_where = " AND nspname NOT IN ('information_schema','pg_catalog') "
 			
-		# TODO: geometry_columns relation may not exist!
+		# LEFT OUTER JOIN: like LEFT JOIN but if there are more matches, for join, all are used (not only one)
 		
-		# LEFT OUTER JOIN: zmena oproti LEFT JOIN ze ak moze spojit viackrat tak to urobi
-		sql = "SELECT relname, nspname, relkind, pg_get_userbyid(relowner), reltuples, relpages, geometry_columns.f_geometry_column, geometry_columns.type FROM pg_class " \
-		      "  JOIN pg_namespace ON relnamespace=pg_namespace.oid " \
-		      "  LEFT OUTER JOIN geometry_columns ON relname=f_table_name AND nspname=f_table_schema " \
-		      "WHERE (relkind = 'r' or relkind='v') " + schema_where + \
-		      "ORDER BY nspname, relname"
+		# first find out whether postgis is enabled
+		if not self.has_postgis:
+			# get all tables and views
+			sql = """SELECT pg_class.relname, pg_namespace.nspname, pg_class.relkind, pg_get_userbyid(relowner), reltuples, relpages, NULL, NULL
+							FROM pg_class
+							JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+							WHERE pg_class.relkind IN ('v', 'r')""" + schema_where + "ORDER BY nspname, relname"
+		else:
+			# discovery of all tables and whether they contain a geometry column
+			sql = """SELECT pg_class.relname, pg_namespace.nspname, pg_class.relkind, pg_get_userbyid(relowner), reltuples, relpages, pg_attribute.attname, pg_attribute.atttypid::regtype
+							FROM pg_class
+							JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+							LEFT OUTER JOIN pg_attribute ON pg_attribute.attrelid = pg_class.oid AND
+									( pg_attribute.atttypid = 'geometry'::regtype
+										OR pg_attribute.atttypid IN (SELECT oid FROM pg_type WHERE typbasetype='geometry'::regtype ) )
+							WHERE pg_class.relkind IN ('v', 'r')""" + schema_where + "ORDER BY nspname, relname, attname"
+						  
 		self._exec_sql(c, sql)
-		return c.fetchall()
+		items = c.fetchall()
+		
+		# get geometry info from geometry_columns if exists
+		if self.has_postgis:
+			sql = """SELECT relname, nspname, relkind, pg_get_userbyid(relowner), reltuples, relpages,
+							geometry_columns.f_geometry_column, geometry_columns.type
+							FROM pg_class
+						  JOIN pg_namespace ON relnamespace=pg_namespace.oid
+						  LEFT OUTER JOIN geometry_columns ON relname=f_table_name AND nspname=f_table_schema
+						  WHERE (relkind = 'r' or relkind='v') """ + schema_where + "ORDER BY nspname, relname, f_geometry_column"
+			self._exec_sql(c, sql)
 			
+			# merge geometry info to "items"
+			for i, geo_item in enumerate(c.fetchall()):
+				if geo_item[7]:
+					items[i] = geo_item
+			
+		return items
 	
 	def get_table_rows(self, table, schema='public'):
 		c = self.con.cursor()

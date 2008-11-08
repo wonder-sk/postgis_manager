@@ -43,14 +43,6 @@ class ManagerWindow(QMainWindow):
 		
 		self.tableModel = None
 		
-		# connect to database selected last time
-		sel = str(settings.value("/PostgreSQL/connections/selected").toString())
-		self.dbConnect(sel)
-		
-		
-		self.tree.expandAll()
-		self.tree.resizeColumnToContents(0)
-		
 		# setup signal-slot connections
 		self.connect(self.tree, SIGNAL("clicked(const QModelIndex&)"), self.itemActivated)
 		self.connect(self.tree, SIGNAL("doubleClicked(const QModelIndex&)"), self.editTable)
@@ -69,6 +61,11 @@ class ManagerWindow(QMainWindow):
 		self.connect(self.actionDbDisconnect, SIGNAL("triggered(bool)"), self.dbDisconnect)
 		self.connect(self.actionAbout, SIGNAL("triggered(bool)"), self.about)
 		
+		# connect to database selected last time
+		# but first let the manager chance to show the window
+		QTimer.singleShot(50, self.dbConnect)
+		
+	
 	def closeEvent(self, e):
 		""" save window state """
 		settings = QSettings()
@@ -98,15 +95,18 @@ class ManagerWindow(QMainWindow):
 		self.dbConnect(sel)
 		
 
-	def dbConnect(self, selected):
+	def dbConnect(self, selected=None):
+		
+		settings = QSettings()
+		if selected == None:
+			selected = str(settings.value("/PostgreSQL/connections/selected").toString())
+		print "selected:" + selected
 		
 		# if there's open database already, get rid of it
 		if self.db:
 			self.dbDisconnect()
 		
 		# get connection details from QSettings
-		settings = QSettings()
-		print "selected:" + selected
 		key = "/PostgreSQL/connections/" + selected
 		get_value = lambda x: settings.value( key + "/" + x )
 		get_value_str = lambda x: str(get_value(x).toString())
@@ -133,6 +133,11 @@ class ManagerWindow(QMainWindow):
 		self.refreshTable()
 		
 		self.updateWindowTitle()
+		
+		self.tree.expandAll()
+		self.tree.resizeColumnToContents(0)
+		
+		# TODO: warning if postgis in DB is not enabled
 	
 	
 	def dbDisconnect(self):
@@ -164,10 +169,10 @@ class ManagerWindow(QMainWindow):
 		info = self.db.get_info()
 		msg = "Server version:\n"+info+"\n\n"
 		
-		try:
+		if self.db.has_postgis:
 			gis_info = self.db.get_postgis_info()
 			msg += "PostGIS:\n- library: %s\n- scripts: %s\n- GEOS: %s\n- Proj: %s\n- use stats: %s" % (gis_info[0], gis_info[1], gis_info[3], gis_info[4], gis_info[5])
-		except DbError, e:
+		else:
 			msg += "PostGIS support not enabled!"
 			
 		priv = self.db.get_database_privileges()
