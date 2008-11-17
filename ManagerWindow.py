@@ -187,6 +187,10 @@ class ManagerWindow(QMainWindow):
 			html += '<tr><td>Proj:<td>%s' % gis_info[4]
 			html += '<tr><td>Use stats:<td>%s' % gis_info[5]
 			html += '</table>'
+			if gis_info[1] != gis_info[2]:
+				html += '<p><img src=":/icons/warning-20px.png"> &nbsp; ' \
+				        'Version of installed scripts doesn\'t match version of released scripts!<br>' \
+								'This is probably a result of incorrect PostGIS upgrade.</p>'
 		else:
 			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; PostGIS support not enabled!</p>'
 			
@@ -274,6 +278,8 @@ class ManagerWindow(QMainWindow):
 		html += '<tr><td>Pages:<td>%d' % item.page_count
 		
 		# permissions
+		has_no_privileges = False
+		has_read_only = False
 		html += "<tr><td>Privileges:<td>"
 		priv = self.db.get_table_privileges(item.name, item.schema().name)
 		if priv[0] or priv[1] or priv[2] or priv[3]:
@@ -281,24 +287,56 @@ class ManagerWindow(QMainWindow):
 			if priv[1]: html += "insert "
 			if priv[2]: html += "update "
 			if priv[3]: html += "delete "
+			if not priv[1] and not priv[2] and not priv[3]:
+				has_read_only = True
 		else:
 			html += "<i>none</i>"
-		html += '</table></div>'
+			has_no_privileges = True
+		html += '</table>'
+		if has_no_privileges:
+			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; This user has no privileges!</p>'
+		elif has_read_only:
+			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; This user has read-only privileges.</p>'
+		if item.row_count > 2 * item.row_count_real or item.row_count * 2 < item.row_count_real:
+			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; There\'s a significant difference between estimated and real row count. ' \
+			        'Consider running VACUUM ANALYZE.'
+		html += '</div>'
+		
+		fields = self.db.get_table_fields(item.name, item.schema().name)
+		constraints = self.db.get_table_constraints(item.name, item.schema().name)
+		indexes = self.db.get_table_indexes(item.name, item.schema().name)
+		
+		has_pkey = False
+		for con in constraints:
+				if con.con_type == postgis_utils.TableConstraint.TypePrimaryKey:
+					has_pkey = True
+		if not has_pkey:
+			html += '<div style="margin-top:10px; margin-left:10px;"><img src=":/icons/warning-20px.png"> &nbsp; No primary key defined for this table!</div>'
 		
 		html += '<div style="margin-top:30px; margin-left:10px;"><h2>PostGIS</h2>'
 		if item.geom_type:
 			html += '<table><tr><td>Column:<td>%s<tr><td>Geometry:<td>%s</table>' % (item.geom_column, item.geom_type)
+			if item.geom_type == 'geometry':
+				html += '<p><img src=":/icons/warning-20px.png"> &nbsp; There isn\'t entry in geometry_columns!</p>'
+			# find out geometry's column number
+			for fld in fields:
+				if fld.name == item.geom_column:
+					geom_col_num = fld.num
+			# find out whether it has spatial index on it
+			has_spatial_index = False
+			for idx in indexes:
+				if geom_col_num in idx.columns:
+					has_spatial_index = True
+			if not has_spatial_index:
+				html += '<p><img src=":/icons/warning-20px.png"> &nbsp; No spatial index defined.</p>'
 		else:
 			html += '<p>This is not a spatial table.</p>'
 		html += '</div>'
-		
-		constraints = self.db.get_table_constraints(item.name, item.schema().name)
 		
 		# fields
 		html += '<div style="margin-top:30px; margin-left:10px"><h2>Fields</h2>'
 		html += '<table><tr bgcolor="#dddddd">'
 		html += '<th width="30"># <th width="180">Name <th width="100">Type <th width="50">Length<th width="50">Null <th>Default '
-		fields = self.db.get_table_fields(item.name, item.schema().name)
 		for fld in fields:
 			is_null_txt = "N" if fld.notnull else "Y"
 			default = fld.default if fld.hasdefault else ""
@@ -330,7 +368,6 @@ class ManagerWindow(QMainWindow):
 			html += "</table></div>"
 		
 		# indexes
-		indexes = self.db.get_table_indexes(item.name, item.schema().name)
 		if len(indexes) != 0:
 			html += '<div style=" margin-top:30px; margin-left:10px"><h2>Indexes</h2>'
 			html += '<table><tr bgcolor="#dddddd"><th width="180">Name<th width="180">Column(s)'

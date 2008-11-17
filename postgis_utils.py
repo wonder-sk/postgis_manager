@@ -334,6 +334,7 @@ class GeoDB:
 		table_name = self._table_name(schema, table)
 		sql = "ALTER TABLE %s RENAME TO %s" % (table_name, new_table)
 		self._exec_sql_and_commit(sql)
+		# TODO: modify geometry_columns if postgis is enabled
 		
 	def create_view(self, name, query, schema=None):
 		view_name = self._table_name(schema, name)
@@ -381,6 +382,7 @@ class GeoDB:
 		table_name = self._table_name(schema, table)
 		sql = "ALTER TABLE %s RENAME %s TO %s" % (table_name, name, new_name)
 		self._exec_sql_and_commit(sql)
+		# TODO: if postgis enabled, maybe needs to modify geometry_columns
 		
 	def table_column_set_type(self, table, column, data_type, schema=None):
 		""" change column type """
