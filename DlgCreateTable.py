@@ -51,6 +51,7 @@ class TableFieldsDelegate(QItemDelegate):
 		""" save data from editor back to model """
 		if index.column() == 0:
 			model.setData(index, QVariant(editor.text()))
+			self.emit(SIGNAL("columnNameChanged()"))
 		elif index.column() == 1:
 			model.setData(index, QVariant(editor.currentText()))
 		else:
@@ -85,6 +86,10 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 		d = TableFieldsDelegate(self)
 		self.fields.setItemDelegate(d)
 		
+		self.fields.setColumnWidth(0,140)
+		self.fields.setColumnWidth(1,140)
+		self.fields.setColumnWidth(2,50)
+		
 		b = QPushButton("&Create")
 		self.buttonBox.addButton(b, QDialogButtonBox.ActionRole)
 
@@ -96,9 +101,13 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 		
 		self.connect(self.chkGeomColumn, SIGNAL("clicked()"), self.updateUi)
 		
+		self.connect(self.fields.selectionModel(), SIGNAL("selectionChanged(const QItemSelection &, const QItemSelection &)"), self.updateUiFields)
+		self.connect(d, SIGNAL("columnNameChanged()"), self.updatePkeyCombo)
+		
 		self.populateSchemas()
 		
 		self.updateUi()
+		self.updateUiFields()
 		
 		
 	def populateSchemas(self):
@@ -116,7 +125,37 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 		useGeom = self.chkGeomColumn.isChecked()
 		self.cboGeomType.setEnabled(useGeom)
 		self.editGeomColumn.setEnabled(useGeom)
+		self.spinGeomDim.setEnabled(useGeom)
+		self.editGeomSrid.setEnabled(useGeom)
 		self.chkSpatialIndex.setEnabled(useGeom)
+		
+	def updateUiFields(self):
+		fld = self.selectedField()
+		if fld is not None:
+			up_enabled = (fld != 0)
+			down_enabled = (fld != self.fields.model().rowCount()-1)
+			del_enabled = True
+		else:
+			up_enabled, down_enabled, del_enabled = False, False, False
+		self.btnFieldUp.setEnabled(up_enabled)
+		self.btnFieldDown.setEnabled(down_enabled)
+		self.btnDeleteField.setEnabled(del_enabled)
+		
+	def updatePkeyCombo(self, selRow=None):
+		""" called when list of columns changes. if 'sel' is None, it keeps current index """
+		
+		if selRow is None:
+			selRow = self.cboPrimaryKey.currentIndex()
+		
+		self.cboPrimaryKey.clear()
+		
+		m = self.fields.model()
+		for row in xrange(m.rowCount()):
+			name = m.data(m.index(row,0)).toString()
+			self.cboPrimaryKey.addItem(name)
+			
+		print "setting",selRow
+		self.cboPrimaryKey.setCurrentIndex(selRow)
 		
 	def addField(self):
 		""" add new field to the end of field table """
@@ -139,22 +178,63 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 		# starts editing
 		self.fields.edit(indexName)
 		
+		self.updatePkeyCombo(0 if newRow == 0 else None)
+		
+	def selectedField(self):
+		sel = self.fields.selectionModel().selectedRows()
+		if len(sel) < 1:
+			return None
+		return sel[0].row()
 	
 	def deleteField(self):
 		""" delete selected field """
-		sel = self.fields.selectionModel().selectedRows()
-		if len(sel) < 1:
+		row = self.selectedField()
+		if row is None:
 			QMessageBox.information(self, "sorry", "no field selected")
 		else:
-			self.fields.model().removeRows(sel[0].row(),1)
+			self.fields.model().removeRows(row,1)
 			
+		self.updatePkeyCombo()
+	
 	def fieldUp(self):
-		""" TODO: move selected field up """
-		pass
+		""" move selected field up """
+		row = self.selectedField()
+		if row is None:
+			QMessageBox.information(self, "sorry", "no field selected")
+			return
+		if row == 0:
+			QMessageBox.information(self, "sorry", "field is at top already")
+			return
+		
+		# take row and reinsert it
+		rowdata = self.fields.model().takeRow(row)
+		self.fields.model().insertRow(row-1, rowdata)
+		
+		# set selection again
+		index = self.fields.model().index(row-1, 0, QModelIndex())
+		self.fields.selectionModel().select(index, QItemSelectionModel.Rows | QItemSelectionModel.ClearAndSelect)
 
+		self.updatePkeyCombo()
+	
 	def fieldDown(self):
-		""" TODO: move selected field down """
-		pass
+		""" move selected field down """
+		row = self.selectedField()
+		if row is None:
+			QMessageBox.information(self, "sorry", "no field selected")
+			return
+		if row == self.fields.model().rowCount()-1:
+			QMessageBox.information(self, "sorry", "field is at bottom already")
+			return
+		
+		# take row and reinsert it
+		rowdata = self.fields.model().takeRow(row)
+		self.fields.model().insertRow(row+1, rowdata)
+		
+		# set selection again
+		index = self.fields.model().index(row+1, 0, QModelIndex())
+		self.fields.selectionModel().select(index, QItemSelectionModel.Rows | QItemSelectionModel.ClearAndSelect)
+	
+		self.updatePkeyCombo()
 	
 	def createTable(self):
 		""" create table with chosen fields, optionally add a geometry column """
@@ -174,11 +254,15 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 			QMessageBox.information(self, "sorry", "add some fields!")
 			return
 		
-		# TODO: SRID, dimension
 		useGeomColumn = self.chkGeomColumn.isChecked()
 		if useGeomColumn:
 			geomColumn = str(self.editGeomColumn.text())
 			geomType = str(self.cboGeomType.currentText())
+			geomDim = self.spinGeomDim.value()
+			try:
+				geomSrid = int(self.editGeomSrid.text())
+			except ValueError:
+				geomSrid = -1
 			useSpatialIndex = self.chkSpatialIndex.isChecked()
 			if len(geomColumn) == 0:
 				QMessageBox.information(self, "sorry", "set geometry column name")
@@ -191,18 +275,20 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 			fldNull = m.data(m.index(row,2,QModelIndex())).toBool()
 			
 			flds.append( postgis_utils.TableField(fldName, fldType, fldNull) )
+			
+		pkey = str(self.cboPrimaryKey.currentText())
 				
 		if self.db:
 			
 			# commit to DB
 			try:
-				self.db.create_table(table, flds, schema)
+				self.db.create_table(table, flds, pkey, schema)
 				if useGeomColumn:
 					self.db.add_geometry_column(table, geomType, schema, geomColumn)
 					# commit data definition changes, otherwise index can't be built
 					self.db.con.commit()
 					if useSpatialIndex:
-						self.db.create_spatial_index(table, schema, geomColumn)
+						self.db.create_spatial_index(table, schema, geomColumn, geomSrid, geomDim)
 				self.emit(SIGNAL("databaseChanged()"))
 			except postgis_utils.DbError, e:
 				self.db.con.rollback()
