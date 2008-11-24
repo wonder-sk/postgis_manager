@@ -15,7 +15,7 @@ class DlgFieldProperties(QDialog, Ui_DlgFieldProperties):
 		fieldTypes = ["integer", "bigint", "smallint", # integers
 	              "serial", "bigserial", # auto-incrementing ints
 								"real", "double precision", "numeric", # floats
-								"varchar(n)", "char(n)", "text", # strings
+								"varchar", "char", "text", # strings
 								"date", "time", "timestamp"] # date/time
 		for item in fieldTypes:
 			self.cboType.addItem(item)
@@ -24,6 +24,8 @@ class DlgFieldProperties(QDialog, Ui_DlgFieldProperties):
 		if column:
 			self.editName.setText(column.name)
 			self.cboType.setEditText(column.data_type)
+			if column.modifier >= 0:
+				self.editLength.setText(str(column.modifier))
 			self.chkNull.setChecked(not column.notnull)
 			if column.default:
 				self.editDefault.setText(column.default)

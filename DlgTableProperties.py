@@ -1,6 +1,7 @@
 
 from ui.DlgTableProperties_ui import Ui_DlgTableProperties
 from DlgFieldProperties import DlgFieldProperties
+from DlgAddGeometryColumn import DlgAddGeometryColumn
 from DlgCreateConstraint import DlgCreateConstraint
 from DlgCreateIndex import DlgCreateIndex
 from DlgDbError import DlgDbError
@@ -63,6 +64,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		self.populateIndexes()
 		
 		self.connect(self.btnAddColumn, SIGNAL("clicked()"), self.addColumn)
+		self.connect(self.btnAddGeometryColumn, SIGNAL("clicked()"), self.addGeometryColumn)
 		self.connect(self.btnEditColumn, SIGNAL("clicked()"), self.editColumn)
 		self.connect(self.btnDeleteColumn, SIGNAL("clicked()"), self.deleteColumn)
 		
@@ -86,13 +88,16 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		for fld in self.fields:
 			item_num = QStandardItem(str(fld.num))
 			item_name = QStandardItem(fld.name)
-			item_type = QStandardItem(fld.data_type)
+			item_type = QStandardItem(fld.data_type if fld.modifier == -1 else "%s(%d)" % (fld.data_type,fld.modifier))
 			item_null = QStandardItem(str(not fld.notnull))
 			if fld.hasdefault:
 				item_default = QStandardItem(fld.default)
 			else:
 				item_default = QStandardItem()
 			m.appendRow( [ item_num, item_name, item_type, item_null, item_default ] )
+		
+		for col in range(4):
+			self.viewFields.resizeColumnToContents(col)
 		
 		
 	def currentColumn(self):
@@ -116,8 +121,13 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		data_type = str(dlg.cboType.currentText())
 		is_null = dlg.chkNull.isChecked()
 		default = str(dlg.editDefault.text())
+		if dlg.editLength.text().count() > 0:
+			x = dlg.editLength.text().toInt()
+			modifier = x[0] if x[1] else None
+		else:
+			modifier = None
 		
-		new_field = postgis_utils.TableField(name, data_type, is_null, default)
+		new_field = postgis_utils.TableField(name, data_type, is_null, default, modifier)
 		
 		self.emit(SIGNAL("aboutToChangeTable()"))
 	
@@ -126,7 +136,31 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 			self.db.table_add_column(self.table, new_field, self.schema)
 			self.populateFields()
 		except postgis_utils.DbError, e:
-			QMessageBox.information(self, "sorry", "couldn't add column:\n"+e.message)
+			DlgDbError.showError(e, self)
+	
+	
+	def addGeometryColumn(self):
+		""" open dialog to add geometry column """
+		
+		dlg = DlgAddGeometryColumn(self)
+		if not dlg.exec_():
+			return
+		
+		name = str(dlg.editName.text())
+		geom_type = str(dlg.cboType.currentText())
+		dim = dlg.spinDim.value()
+		try:
+			srid = int(dlg.editSrid.text())
+		except ValueError:
+			srid = -1
+			
+		self.emit(SIGNAL("aboutToChangeTable()"))
+		
+		try:
+			self.db.add_geometry_column(self.table, geom_type, self.schema, name, srid, dim)
+			self.populateFields()
+		except postgis_utils.DbError, e:
+			DlgDbError.showError(e, self)
 	
 	
 	def editColumn(self):
@@ -154,12 +188,20 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		new_is_null = dlg.chkNull.isChecked()
 		new_default = str(dlg.editDefault.text())
 		
+		if dlg.editLength.text().count() > 0:
+			x = dlg.editLength.text().toInt()
+			new_modifier = x[0] if x[1] else -1
+		else:
+			new_modifier = -1
+		
 		self.emit(SIGNAL("aboutToChangeTable()"))
 		
 		try:
 			if new_name != col.name:
 				self.db.table_column_rename(self.table, col.name, new_name, self.schema)
-			if new_data_type != col.data_type:
+			if new_data_type != col.data_type or new_modifier != col.modifier:
+				if new_modifier >= 0:
+					new_data_type += "(%d)" % new_modifier
 				self.db.table_column_set_type(self.table, new_name, new_data_type, self.schema)
 			if new_is_null == col.notnull:
 				self.db.table_column_set_null(self.table, new_name, new_is_null, self.schema)
@@ -167,7 +209,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 				self.db.table_column_set_default(self.table, new_name, new_default, self.schema)
 			if len(new_default) == 0 and col.hasdefault:
 				self.db.table_column_set_default(self.table, new_name, None, self.schema)
-				
+			
 			self.populateFields()
 		except postgis_utils.DbError, e:
 			DlgDbError.showError(e, self)
@@ -231,6 +273,8 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 			item_columns = QStandardItem(cols)
 			m.appendRow( [ item_name, item_type, item_columns ] )
 
+		for col in range(3):
+			self.viewConstraints.resizeColumnToContents(col)
 
 	def addConstraint(self):
 		""" add primary key or unique constraint """
@@ -307,6 +351,8 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 			item_columns = QStandardItem(cols)
 			m.appendRow( [ item_name, item_columns ] )
 
+		for col in range(2):
+			self.viewIndexes.resizeColumnToContents(col)
 
 	def createIndex(self):
 		""" create an index """

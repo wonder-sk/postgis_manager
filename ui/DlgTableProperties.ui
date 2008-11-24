@@ -47,6 +47,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="btnAddGeometryColumn" >
+           <property name="text" >
+            <string>Add geometry column</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="btnEditColumn" >
            <property name="text" >
             <string>Edit column</string>
@@ -206,6 +213,7 @@
   <tabstop>tabs</tabstop>
   <tabstop>viewFields</tabstop>
   <tabstop>btnAddColumn</tabstop>
+  <tabstop>btnAddGeometryColumn</tabstop>
   <tabstop>btnEditColumn</tabstop>
   <tabstop>btnDeleteColumn</tabstop>
   <tabstop>viewConstraints</tabstop>
