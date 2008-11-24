@@ -1,7 +1,3 @@
-higher priority:
-- default prop for create table, max_length, primary key
-
-low priority:
 - create views
 - vacuum, analyze
 - import non-spatial tables, e.g. csv/dbf

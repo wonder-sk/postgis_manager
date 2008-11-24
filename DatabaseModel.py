@@ -78,9 +78,9 @@ class DatabaseItem(TreeItem):
 		
 		# add all tables
 		for tbl in list_tables:
-			tablename, schema, reltype, relowner, row_count, page_count, geom_col, geom_type = tbl
+			tablename, schema, reltype, relowner, row_count, page_count, geom_col, geom_type, geom_dim, geom_srid = tbl
 			is_view = (reltype == 'v')
-			tableItem = TableItem(tablename, relowner, row_count, page_count, is_view, geom_type, geom_col, schemas[schema])
+			tableItem = TableItem(tablename, relowner, row_count, page_count, is_view, geom_type, geom_col, geom_dim, geom_srid, schemas[schema])
 
 	
 class SchemaItem(TreeItem):
@@ -105,9 +105,10 @@ class SchemaItem(TreeItem):
 
 class TableItem(TreeItem):
 	
-	def __init__(self, name, owner, row_count, page_count, is_view, geom_type, geom_column, parent):
+	def __init__(self, name, owner, row_count, page_count, is_view, geom_type, geom_column, geom_dim, geom_srid, parent):
 		TreeItem.__init__(self, parent)
-		self.name, self.owner, self.row_count, self.page_count, self.geom_type, self.geom_column, self.is_view = name, owner, row_count, page_count, geom_type, geom_column, is_view
+		self.name, self.owner, self.row_count, self.page_count, self.is_view = name, owner, row_count, page_count, is_view
+		self.geom_type, self.geom_column, self.geom_dim, self.geom_srid = geom_type, geom_column, geom_dim, geom_srid
 		
 		# load (shared) icon with first instance of table item
 		if not hasattr(TableItem, 'tableIcon'):

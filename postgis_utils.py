@@ -58,8 +58,8 @@ class DbError(Exception):
 		return "MESSAGE: %s\nQUERY: %s" % (self.message, self.query)
 
 class TableField:
-	def __init__(self, name, data_type, is_null=None, default=None):
-		self.name, self.data_type, self.is_null, self.default = name, data_type, is_null, default
+	def __init__(self, name, data_type, is_null=None, default=None, modifier=None):
+		self.name, self.data_type, self.is_null, self.default, self.modifier = name, data_type, is_null, default, modifier
 		
 	def is_null_txt(self):
 		if self.is_null:
@@ -69,6 +69,7 @@ class TableField:
 		
 	def field_def(self):
 		""" return field definition as used for CREATE TABLE or ALTER TABLE command """
+		data_type = self.data_type if (not self.modifier or self.modifier < 0) else "%s(%d)" % (self.data_type, self.modifier)
 		txt = "%s %s %s" % (self.name, self.data_type, self.is_null_txt())
 		if self.default and len(self.default) > 0:
 			txt += " DEFAULT %s" % self.default
@@ -158,13 +159,13 @@ class GeoDB:
 		# first find out whether postgis is enabled
 		if not self.has_postgis:
 			# get all tables and views
-			sql = """SELECT pg_class.relname, pg_namespace.nspname, pg_class.relkind, pg_get_userbyid(relowner), reltuples, relpages, NULL, NULL
+			sql = """SELECT pg_class.relname, pg_namespace.nspname, pg_class.relkind, pg_get_userbyid(relowner), reltuples, relpages, NULL, NULL, NULL, NULL
 							FROM pg_class
 							JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
 							WHERE pg_class.relkind IN ('v', 'r')""" + schema_where + "ORDER BY nspname, relname"
 		else:
 			# discovery of all tables and whether they contain a geometry column
-			sql = """SELECT pg_class.relname, pg_namespace.nspname, pg_class.relkind, pg_get_userbyid(relowner), reltuples, relpages, pg_attribute.attname, pg_attribute.atttypid::regtype
+			sql = """SELECT pg_class.relname, pg_namespace.nspname, pg_class.relkind, pg_get_userbyid(relowner), reltuples, relpages, pg_attribute.attname, pg_attribute.atttypid::regtype, NULL, NULL
 							FROM pg_class
 							JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
 							LEFT OUTER JOIN pg_attribute ON pg_attribute.attrelid = pg_class.oid AND
@@ -178,7 +179,7 @@ class GeoDB:
 		# get geometry info from geometry_columns if exists
 		if self.has_postgis:
 			sql = """SELECT relname, nspname, relkind, pg_get_userbyid(relowner), reltuples, relpages,
-							geometry_columns.f_geometry_column, geometry_columns.type
+							geometry_columns.f_geometry_column, geometry_columns.type, geometry_columns.coord_dimension, geometry_columns.srid
 							FROM pg_class
 						  JOIN pg_namespace ON relnamespace=pg_namespace.oid
 						  LEFT OUTER JOIN geometry_columns ON relname=f_table_name AND nspname=f_table_schema
@@ -300,10 +301,11 @@ class GeoDB:
 		sql = "SELECT DropGeometryTable(%s'%s')" % (schema_part, table)
 		self._exec_sql_and_commit(sql)
 		
-	def create_table(self, table, fields, schema=None):
+	def create_table(self, table, fields, pkey=None, schema=None):
 		""" create ordinary table
-				'fields' is array containing instances of TableField """
-		# TODO: primary key?
+				'fields' is array containing instances of TableField
+				'pkey' contains name of column to be used as primary key
+		"""
 				
 		if len(fields) == 0:
 			return False
@@ -313,6 +315,8 @@ class GeoDB:
 		sql = "CREATE TABLE %s (%s" % (table_name, fields[0].field_def())
 		for field in fields[1:]:
 			sql += ", %s" % field.field_def()
+		if pkey:
+			sql += ", PRIMARY KEY (%s)" % pkey
 		sql += ")"
 		self._exec_sql_and_commit(sql)
 		return True

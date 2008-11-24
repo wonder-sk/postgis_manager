@@ -315,7 +315,10 @@ class ManagerWindow(QMainWindow):
 		
 		html += '<div style="margin-top:30px; margin-left:10px;"><h2>PostGIS</h2>'
 		if item.geom_type:
-			html += '<table><tr><td>Column:<td>%s<tr><td>Geometry:<td>%s</table>' % (item.geom_column, item.geom_type)
+			html += '<table><tr><td>Column:<td>%s<tr><td>Geometry:<td>%s' % (item.geom_column, item.geom_type)
+			if item.geom_dim: # only if we have info from geometry_columns
+				html += '<tr><td>Dimension:<td>%d<tr><td>SRID:<td>%d' % (item.geom_dim, item.geom_srid)
+			html += '</table>'
 			if item.geom_type == 'geometry':
 				html += '<p><img src=":/icons/warning-20px.png"> &nbsp; There isn\'t entry in geometry_columns!</p>'
 			# find out geometry's column number
@@ -520,11 +523,15 @@ class ManagerWindow(QMainWindow):
 		if res != QMessageBox.Yes:
 			return
 		
+		# necessary to close cursor, otherwise deletion fails
+		self.unloadDbTable()
+		self.dbInfo()
+		
 		try:
 			if ptr.is_view:
 				self.db.delete_view(ptr.name, ptr.schema().name)
 			else:
-				if len(ptr.geom_column) > 0:
+				if ptr.geom_column:
 					self.db.delete_geometry_table(ptr.name, ptr.schema().name)
 				else:
 					self.db.delete_table(ptr.name, ptr.schema().name)
@@ -625,30 +632,30 @@ class ManagerWindow(QMainWindow):
 	
 	def createMenu(self):
 		
-		self.actionDbInfo = QAction("Show info", self)
-		self.actionSqlWindow = QAction("SQL window", self)
-		self.actionDbDisconnect = QAction("Disconnect", self)
+		self.actionDbInfo = QAction("Show &info", self)
+		self.actionSqlWindow = QAction("&SQL window", self)
+		self.actionDbDisconnect = QAction("&Disconnect", self)
 		self.actionDbDisconnect.setEnabled(False)
 		
-		self.actionCreateSchema = QAction("Create schema", self)
-		self.actionDeleteSchema = QAction("Delete (empty) schema", self)
+		self.actionCreateSchema = QAction("&Create schema", self)
+		self.actionDeleteSchema = QAction("&Delete (empty) schema", self)
 		
-		self.actionCreateTable = QAction("Create table", self)
-		self.actionCreateView = QAction("Create view", self)
-		self.actionEditTable = QAction("Edit table", self)
-		self.actionDeleteTableView = QAction("Delete table/view", self)
-		self.actionEmptyTable = QAction("Empty table", self)
+		self.actionCreateTable = QAction("Create &table", self)
+		self.actionCreateView = QAction("Create &view", self)
+		self.actionEditTable = QAction("&Edit table", self)
+		self.actionDeleteTableView = QAction("&Delete table/view", self)
+		self.actionEmptyTable = QAction("E&mpty table", self)
 		
-		self.actionLoadData = QAction("Load data from shapefile", self)
-		self.actionDumpData = QAction("Dump data to shapefile", self)
+		self.actionLoadData = QAction("&Load data from shapefile", self)
+		self.actionDumpData = QAction("&Dump data to shapefile", self)
 		
-		self.actionAbout = QAction("About", self)
+		self.actionAbout = QAction("&About", self)
 		
-		self.menuDb     = QMenu("Database", self)
-		self.menuSchema = QMenu("Schema", self)
-		self.menuTable  = QMenu("Table", self)
-		self.menuData   = QMenu("Data", self)
-		self.menuHelp   = QMenu("Help", self)
+		self.menuDb     = QMenu("&Database", self)
+		self.menuSchema = QMenu("&Schema", self)
+		self.menuTable  = QMenu("&Table", self)
+		self.menuData   = QMenu("D&ata", self)
+		self.menuHelp   = QMenu("&Help", self)
 		
 		self.actionsDb = self.listDatabases()
 		
