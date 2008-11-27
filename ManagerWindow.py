@@ -58,6 +58,8 @@ class ManagerWindow(QMainWindow):
 		self.connect(self.actionDeleteSchema, SIGNAL("triggered(bool)"), self.deleteSchema)
 		self.connect(self.actionLoadData, SIGNAL("triggered(bool)"), self.loadData)
 		self.connect(self.actionDumpData, SIGNAL("triggered(bool)"), self.dumpData)
+		self.connect(self.actionImportData, SIGNAL("triggered(bool)"), self.importData)
+		self.connect(self.actionExportData, SIGNAL("triggered(bool)"), self.exportData)
 		self.connect(self.actionDbInfo, SIGNAL("triggered(bool)"), self.dbInfo)
 		self.connect(self.actionSqlWindow, SIGNAL("triggered(bool)"), self.sqlWindow)
 		self.connect(self.actionDbDisconnect, SIGNAL("triggered(bool)"), self.dbDisconnect)
@@ -580,6 +582,11 @@ class ManagerWindow(QMainWindow):
 		dlg = DlgDumpData(self, self.db)
 		dlg.exec_()
 		
+	def importData(self):
+		pass
+	
+	def exportData(self):
+		pass
 		
 	def about(self):
 		""" show about box """
@@ -640,14 +647,17 @@ class ManagerWindow(QMainWindow):
 		self.actionCreateSchema = QAction("&Create schema", self)
 		self.actionDeleteSchema = QAction("&Delete (empty) schema", self)
 		
-		self.actionCreateTable = QAction("Create &table", self)
+		self.actionCreateTable = QAction(QIcon(":/icons/toolbar/action_new_table.png"), "Create &table", self)
 		self.actionCreateView = QAction("Create &view", self)
-		self.actionEditTable = QAction("&Edit table", self)
-		self.actionDeleteTableView = QAction("&Delete table/view", self)
+		self.actionEditTable = QAction(QIcon(":/icons/toolbar/action_edit_table.png"),"&Edit table", self)
+		self.actionDeleteTableView = QAction(QIcon(":/icons/toolbar/action_del_table.png"),"&Delete table/view", self)
 		self.actionEmptyTable = QAction("E&mpty table", self)
 		
 		self.actionLoadData = QAction("&Load data from shapefile", self)
 		self.actionDumpData = QAction("&Dump data to shapefile", self)
+		self.actionImportData = QAction(QIcon(":/icons/toolbar/action_import.png"), "&Import data", self)
+		self.actionExportData = QAction(QIcon(":/icons/toolbar/action_export.png"), "&Export data", self)
+		
 		
 		self.actionAbout = QAction("&About", self)
 		
@@ -673,7 +683,7 @@ class ManagerWindow(QMainWindow):
 			self.menuSchema.addAction(a)
 		for a in [self.actionCreateTable, self.actionCreateView, self.actionEditTable, self.actionEmptyTable, self.actionDeleteTableView]:
 			self.menuTable.addAction(a)
-		for a in [self.actionLoadData, self.actionDumpData]:
+		for a in [self.actionLoadData, self.actionDumpData, self.actionImportData, self.actionExportData]:
 			self.menuData.addAction(a)
 		
 		self.menuHelp.addAction(self.actionAbout)
@@ -685,3 +695,15 @@ class ManagerWindow(QMainWindow):
 		self.menuBar.addMenu(self.menuData)
 		self.menuBar.addMenu(self.menuHelp)
 		self.setMenuBar(self.menuBar)
+		
+		# toolbar
+		self.toolBar = QToolBar(self)
+		self.toolBar.setObjectName("PostGIS_Manager_ToolBar")
+		self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+		self.toolBar.addAction(self.actionCreateTable)
+		self.toolBar.addAction(self.actionEditTable)
+		self.toolBar.addAction(self.actionDeleteTableView)
+		self.toolBar.addSeparator()
+		self.toolBar.addAction(self.actionImportData)
+		self.toolBar.addAction(self.actionExportData)
+		self.addToolBar(self.toolBar)

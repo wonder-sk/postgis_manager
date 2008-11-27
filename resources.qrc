@@ -5,5 +5,11 @@
         <file>icons/view.xpm</file>
 				<file>icons/postgis_elephant.png</file>
 				<file>icons/warning-20px.png</file>
+				
+				<file>icons/toolbar/action_new_table.png</file>
+				<file>icons/toolbar/action_edit_table.png</file>
+				<file>icons/toolbar/action_del_table.png</file>
+				<file>icons/toolbar/action_import.png</file>
+				<file>icons/toolbar/action_export.png</file>
     </qresource>
 </RCC>
