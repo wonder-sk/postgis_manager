@@ -20,6 +20,7 @@ from DlgTableProperties import DlgTableProperties
 from DatabaseModel import TableItem, SchemaItem, DatabaseModel
 from DbTableModel import DbTableModel
 from DlgDbError import DlgDbError
+from WizardImport import WizardImport
 
 import resources
 import postgis_utils
@@ -583,7 +584,8 @@ class ManagerWindow(QMainWindow):
 		dlg.exec_()
 		
 	def importData(self):
-		pass
+		wizard = WizardImport(self, self.db)
+		wizard.exec_()
 	
 	def exportData(self):
 		pass

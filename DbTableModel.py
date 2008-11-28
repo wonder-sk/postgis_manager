@@ -26,8 +26,9 @@ class DbTableModel(QAbstractTableModel):
 		self.col_count = len(self.fields)
 		
 		# create named cursor and run query
-		self.cur = self.db.con.cursor("db_table_"+self.table)
-		self.cur.execute("SELECT %s FROM %s.%s" % (fields_txt, self.schema, self.table))
+		cur_name = ("db_table_"+self.table).replace(' ', '_')
+		self.cur = self.db.con.cursor(cur_name)
+		self.cur.execute("SELECT %s FROM %s" % (fields_txt, self.db._table_name(self.schema, self.table)))
 		
 		self.fetched_count = 100
 		self.fetchMoreData(0)

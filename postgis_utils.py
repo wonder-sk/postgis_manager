@@ -70,7 +70,7 @@ class TableField:
 	def field_def(self):
 		""" return field definition as used for CREATE TABLE or ALTER TABLE command """
 		data_type = self.data_type if (not self.modifier or self.modifier < 0) else "%s(%d)" % (self.data_type, self.modifier)
-		txt = "%s %s %s" % (self.name, self.data_type, self.is_null_txt())
+		txt = "%s %s %s" % (self.name, data_type, self.is_null_txt())
 		if self.default and len(self.default) > 0:
 			txt += " DEFAULT %s" % self.default
 		return txt
@@ -469,6 +469,21 @@ class GeoDB:
 		c = self.con.cursor()
 		self._exec_sql(c, sql)
 		return c.fetchone()
+	
+	def insert_table_row(self, table, values, schema=None, cursor=None):
+		""" insert a row with specified values to a table.
+		 if a cursor is specified, it doesn't commit (expecting that there will be more inserts)
+		 otherwise it commits immediately """
+		t = self._table_name(schema, table)
+		sql = ""
+		for value in values:
+			if sql: sql += ", "
+			sql += value
+		sql = "INSERT INTO %s VALUES (%s)" % (t, sql)
+		if cursor:
+			self._exec_sql(cursor, sql)
+		else:
+			self._exec_sql_and_commit(sql)
 		
 	def _exec_sql(self, cursor, sql):
 		try:
@@ -487,6 +502,8 @@ class GeoDB:
 			raise
 		
 	def _table_name(self, schema, table):
+		if table.find(' ') != -1: table = '"%s"' % table
+		if schema and schema.find(' ') != -1: schema = '"%s"' % schema
 		if not schema:
 			return table
 		else:
