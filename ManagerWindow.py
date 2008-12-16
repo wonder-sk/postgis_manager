@@ -43,11 +43,12 @@ class ManagerWindow(QMainWindow):
 		
 		self.dbModel = DatabaseModel(self)
 		self.tree.setModel(self.dbModel)
+		self.currentItem = (None, None)
 		
 		self.tableModel = None
 		
 		# setup signal-slot connections
-		self.connect(self.tree, SIGNAL("clicked(const QModelIndex&)"), self.itemActivated)
+		self.connect(self.tree.selectionModel(), SIGNAL("currentChanged(const QModelIndex&, const QModelIndex&)"), self.itemChanged)
 		self.connect(self.tree, SIGNAL("doubleClicked(const QModelIndex&)"), self.editTable)
 		self.connect(self.tree.model(), SIGNAL("dataChanged(const QModelIndex &, const QModelIndex &)"), self.refreshTable)
 		# actions
@@ -218,16 +219,23 @@ class ManagerWindow(QMainWindow):
 		self.tree.model().loadFromDb(self.db)
 		self.tree.model().reset()
 		self.tree.expandAll()
-		
-	def itemActivated(self, index):
+
+	def itemChanged(self, index, indexOld):
+		""" update information - current database item has been changed """
 		item = index.internalPointer()
 		
 		if isinstance(item, SchemaItem):
+			if self.currentItem == (item.name, None):
+				return
+			self.currentItem = (item.name, None)
 			self.loadSchemaMetadata(item)
 			self.unloadDbTable()
 		elif isinstance(item, TableItem):
+			if self.currentItem == (item.schema().name, item.name):
+				return
+			self.currentItem = (item.schema().name, item.name)
 			self.loadTableMetadata(item)
-			
+	
 	
 	def loadSchemaMetadata(self, item):
 		""" show metadata about schema """	

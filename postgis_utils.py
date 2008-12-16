@@ -152,7 +152,7 @@ class GeoDB:
 		if schema:
 			schema_where = " AND nspname = '%s' " % schema
 		else:
-			schema_where = " AND nspname NOT IN ('information_schema','pg_catalog') "
+			schema_where = " AND (nspname != 'information_schema' AND nspname !~ 'pg_') "
 			
 		# LEFT OUTER JOIN: like LEFT JOIN but if there are more matches, for join, all are used (not only one)
 		
