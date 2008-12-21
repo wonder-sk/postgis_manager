@@ -60,7 +60,7 @@ class DatabaseItem(TreeItem):
 		try:
 			list_schemas = db.list_schemas()
 		except postgis_utils.DbError, e:
-			DlgDbError.showError(e, self)
+			DlgDbError.showError(e, None)
 			return
 		
 		schemas = {} # name : item
@@ -73,7 +73,7 @@ class DatabaseItem(TreeItem):
 		try:
 			list_tables = db.list_geotables()
 		except postgis_utils.DbError, e:
-			DlgDbError.showError(e, self)
+			DlgDbError.showError(e, None)
 			return
 		
 		# add all tables
@@ -247,7 +247,7 @@ class DatabaseModel(QAbstractItemModel):
 				self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex &)'), index, index)
 				return True
 			except postgis_utils.DbError, e:
-				DlgDbError.showError(e, self)
+				DlgDbError.showError(e, None)
 				return False
 			
 		elif isinstance(item, SchemaItem):
@@ -257,7 +257,7 @@ class DatabaseModel(QAbstractItemModel):
 				self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex &)'), index, index)
 				return True
 			except postgis_utils.DbError, e:
-				DlgDbError.showError(e, self)
+				DlgDbError.showError(e, None)
 				return False
 			
 		else:

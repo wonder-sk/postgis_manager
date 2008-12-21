@@ -16,10 +16,11 @@ class DbTableModel(QAbstractTableModel):
 		self.table = table
 		
 		# get fields, ignore geometry columns
+		# quote column names to avoid some problems (e.g. columns with upper case)
 		self.fields = []
 		for fld in self.db.get_table_fields(self.table, self.schema):
 			if fld.data_type != "geometry":
-				self.fields.append(fld.name)
+				self.fields.append('"%s"' % fld.name)
 		fields_txt = ", ".join(self.fields)
 		
 		self.row_count = row_count_real #self.db.get_table_rows(self.table, self.schema)
@@ -87,4 +88,4 @@ class DbTableModel(QAbstractTableModel):
 			return QVariant(section+1)
 		else:
 			# header for a column
-			return QVariant(self.fields[section])
+			return QVariant(self.fields[section].strip('"'))
