@@ -62,7 +62,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		self.cboTable.setEditText(QString())
 	
 	def populateEncodings(self):
-		encodings = ['ASCII', 'CP1250', 'ISO-8859-2', 'UTF-8']
+		encodings = ['ISO-8859-1', 'ISO-8859-2', 'UTF-8', 'CP1250']
 		for enc in encodings:
 			self.cboEncoding.addItem(enc)
 	
@@ -117,6 +117,8 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 			args += ['-g', str(self.editGeomColumn.text())]
 		if self.chkEncoding.isChecked():
 			args += ['-W', str(self.cboEncoding.currentText())]
+		if self.chkSinglePart.isChecked():
+			args.append('-S')
 		if self.chkSpatialIndex.isChecked():
 			args.append('-I')
 			
@@ -186,6 +188,9 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		if fileName.isNull():
 			return
 		self.editShapefile.setText(fileName)
+		# use default name for table
+		fi = QFileInfo(fileName)
+		self.cboTable.setEditText(fi.baseName())
 	
 	def onSelectOutputFile(self):
 		fileName = QFileDialog.getSaveFileName(self, "Save SQL as", QString(), "SQL files (*.sql);;All files (*.*)")

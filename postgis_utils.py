@@ -514,7 +514,7 @@ class GeoDB:
 			raise
 		
 	def _table_name(self, schema, table):
-		if table.find(' ') != -1: table = '"%s"' % table
+		table = '"%s"' % table
 		if schema and schema.find(' ') != -1: schema = '"%s"' % schema
 		if not schema:
 			return table

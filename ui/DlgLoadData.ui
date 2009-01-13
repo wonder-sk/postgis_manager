@@ -6,7 +6,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>564</height>
+    <height>588</height>
    </rect>
   </property>
   <property name="windowTitle" >
@@ -158,10 +158,17 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="0" colspan="2" >
+      <item row="4" column="0" colspan="2" >
        <widget class="QCheckBox" name="chkSpatialIndex" >
         <property name="text" >
          <string>Create spatial index</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2" >
+       <widget class="QCheckBox" name="chkSinglePart" >
+        <property name="text" >
+         <string>Create single-part geometries instead of multi-part</string>
         </property>
        </widget>
       </item>
@@ -235,6 +242,7 @@
   <tabstop>editGeomColumn</tabstop>
   <tabstop>chkEncoding</tabstop>
   <tabstop>cboEncoding</tabstop>
+  <tabstop>chkSinglePart</tabstop>
   <tabstop>chkSpatialIndex</tabstop>
   <tabstop>radExec</tabstop>
   <tabstop>radSave</tabstop>
