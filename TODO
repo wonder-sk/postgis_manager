@@ -4,3 +4,14 @@
 - add geospatial support to db
 - geometry_columns validity check
 - use QtSql instead of psycopg ?
+
+suggestions by Jeremy Palmer:
+- show indication of DB connecting and loading in progress
+- don't count rows automatically - only estimated, allow user to display it on request
+- don't populate table tab unless the tab is active
+- don't render map unless its tab is active
+- allow cancel rendering with ESC
+- show layer extents (use estimated_extent())
+- display SRID in user friendly way (name, parameters,...)
+- faster loading of results in SQL window
+- show query time

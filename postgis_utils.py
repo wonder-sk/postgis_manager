@@ -12,7 +12,7 @@ http://www.postgresql.org/docs/8.0/static/functions-info.html
 """
 
 import psycopg2
-
+import re
 
 class TableAttribute:
 	def __init__(self, row):
@@ -70,15 +70,24 @@ class TableField:
 	def field_def(self):
 		""" return field definition as used for CREATE TABLE or ALTER TABLE command """
 		data_type = self.data_type if (not self.modifier or self.modifier < 0) else "%s(%d)" % (self.data_type, self.modifier)
-		txt = "%s %s %s" % (self.name, data_type, self.is_null_txt())
+		txt = "%s %s %s" % (self._quote(self.name), data_type, self.is_null_txt())
 		if self.default and len(self.default) > 0:
 			txt += " DEFAULT %s" % self.default
 		return txt
+		
+	def _quote(self, ident):
+		if re.match(r"^\w+$", ident) is not None:
+			return ident
+		else:
+			return '"%s"' % ident.replace('"', '""')
 		
 
 class GeoDB:
 	
 	def __init__(self, host=None, port=None, dbname=None, user=None, passwd=None):
+		
+		# regular expression for identifiers without need to quote them
+		self.re_ident_ok = re.compile(r"^\w+$")
 		
 		self.host = host
 		self.port = port
@@ -150,7 +159,7 @@ class GeoDB:
 		c = self.con.cursor()
 		
 		if schema:
-			schema_where = " AND nspname = '%s' " % schema
+			schema_where = " AND nspname = '%s' " % self._quote_str(schema)
 		else:
 			schema_where = " AND (nspname != 'information_schema' AND nspname !~ 'pg_') "
 			
@@ -193,15 +202,17 @@ class GeoDB:
 			
 		return items
 	
-	def get_table_rows(self, table, schema='public'):
+	
+	def get_table_rows(self, table, schema=None):
 		c = self.con.cursor()
 		self._exec_sql(c, "SELECT COUNT(*) FROM %s" % self._table_name(schema, table))
 		return c.fetchone()[0]
 		
 		
-	def get_table_fields(self, table, schema='public'):
+	def get_table_fields(self, table, schema=None):
 		""" return list of columns in table """
 		c = self.con.cursor()
+		schema_where = " AND nspname='%s' " % self._quote_str(schema) if schema is not None else ""
 		sql = """SELECT a.attnum AS ordinal_position,
 				a.attname AS column_name,
 				t.typname AS data_type,
@@ -216,10 +227,9 @@ class GeoDB:
 			JOIN pg_namespace nsp ON c.relnamespace = nsp.oid
 			LEFT JOIN pg_attrdef adef ON adef.adrelid = a.attrelid AND adef.adnum = a.attnum
 			WHERE
-				nsp.nspname = '%s' AND
-			  c.relname = '%s' AND
+			  c.relname = '%s' %s AND
 				a.attnum > 0
-			ORDER BY a.attnum""" % (schema, table)
+			ORDER BY a.attnum""" % (self._quote_str(table), schema_where)
 
 		self._exec_sql(c, sql)
 		attrs = []
@@ -228,11 +238,17 @@ class GeoDB:
 		return attrs
 		
 		
-	def get_table_indexes(self, table, schema='public'):
+	def get_table_indexes(self, table, schema=None):
 		""" get info about table's indexes. ignore primary key and unique index, they get listed in constaints """
-		# TODO: schema
 		c = self.con.cursor()
-		sql = """SELECT relname, indkey FROM pg_class, pg_index WHERE pg_class.oid = pg_index.indexrelid AND pg_class.oid IN ( SELECT indexrelid FROM pg_index, pg_class WHERE pg_class.relname='%s' AND pg_class.oid=pg_index.indrelid AND indisunique != 't' AND indisprimary != 't' )""" % table
+		
+		schema_where = " AND nspname='%s' " % self._quote_str(schema) if schema is not None else ""
+		sql = """SELECT relname, indkey FROM pg_class, pg_index
+						 WHERE pg_class.oid = pg_index.indexrelid AND pg_class.oid IN (
+						         SELECT indexrelid FROM pg_index, pg_class
+										 JOIN pg_namespace nsp ON pg_class.relnamespace = nsp.oid
+										 WHERE pg_class.relname='%s' %s AND pg_class.oid=pg_index.indrelid
+										   AND indisunique != 't' AND indisprimary != 't' )""" % (self._quote_str(table), schema_where)
 		self._exec_sql(c, sql)
 		indexes = []
 		for row in c.fetchall():
@@ -240,15 +256,16 @@ class GeoDB:
 		return indexes
 	
 	
-	def get_table_constraints(self, table, schema='public'):
-		# TODO: schema
+	def get_table_constraints(self, table, schema=None):
 		c = self.con.cursor()
 		
+		schema_where = " AND nspname='%s' " % self._quote_str(schema) if schema is not None else ""
 		sql = """SELECT c.conname, c.contype, c.condeferrable, c.condeferred, array_to_string(c.conkey, ' '), c.consrc,
 		         t2.relname, c.confupdtype, c.confdeltype, c.confmatchtype, array_to_string(c.confkey, ' ') FROM pg_constraint c
 		  LEFT JOIN pg_class t ON c.conrelid = t.oid
 			LEFT JOIN pg_class t2 ON c.confrelid = t2.oid
-			WHERE t.relname = '%s'""" % table
+			JOIN pg_namespace nsp ON t.relnamespace = nsp.oid
+			WHERE t.relname = '%s' %s """ % (self._quote_str(table), schema_where)
 		
 		self._exec_sql(c, sql)
 		
@@ -260,8 +277,10 @@ class GeoDB:
 	
 	def get_view_definition(self, view, schema=None):
 		""" returns definition of the view """
-		# TODO: schema
-		sql = "SELECT pg_get_viewdef(oid) FROM pg_class WHERE relname='%s' AND relkind='v'" % view
+		schema_where = " AND nspname='%s' " % self._quote_str(schema) if schema is not None else ""
+		sql = """SELECT pg_get_viewdef(c.oid) FROM pg_class c
+						JOIN pg_namespace nsp ON c.relnamespace = nsp.oid
+		        WHERE relname='%s' %s AND relkind='v'""" % (self._quote_str(view), schema_where)
 		c = self.con.cursor()
 		self._exec_sql(c, sql)
 		return c.fetchone()[0]
@@ -277,28 +296,28 @@ class GeoDB:
 		
 		# use schema if explicitly specified
 		if schema:
-			schema_part = "'%s', " % schema
+			schema_part = "'%s', " % self._quote_str(schema)
 		else:
 			schema_part = ""
-		sql = "SELECT AddGeometryColumn(%s'%s', '%s', %d, '%s', %d)" % (schema_part, table, geom_column, srid, geom_type, dim)
+		sql = "SELECT AddGeometryColumn(%s'%s', '%s', %d, '%s', %d)" % (schema_part, self._quote_str(table), self._quote_str(geom_column), srid, self._quote_str(geom_type), dim)
 		self._exec_sql_and_commit(sql)
 		
 	def delete_geometry_column(self, table, geom_column, schema=None):
 		""" use postgis function to delete geometry column correctly """
 		if schema:
-			schema_part = "'%s', " % schema
+			schema_part = "'%s', " % self._quote_str(schema)
 		else:
 			schema_part = ""
-		sql = "SELECT DropGeometryColumn(%s'%s', '%s')" % (schema_part, table, geom_column)
+		sql = "SELECT DropGeometryColumn(%s'%s', '%s')" % (schema_part, self._quote_str(table), self._quote_str(geom_column))
 		self._exec_sql_and_commit(sql)
 		
 	def delete_geometry_table(self, table, schema=None):
 		""" delete table with one or more geometries using postgis function """
 		if schema:
-			schema_part = "'%s', " % schema
+			schema_part = "'%s', " % self._quote_str(schema)
 		else:
 			schema_part = ""
-		sql = "SELECT DropGeometryTable(%s'%s')" % (schema_part, table)
+		sql = "SELECT DropGeometryTable(%s'%s')" % (schema_part, self._quote_str(table))
 		self._exec_sql_and_commit(sql)
 		
 	def create_table(self, table, fields, pkey=None, schema=None):
@@ -316,7 +335,7 @@ class GeoDB:
 		for field in fields[1:]:
 			sql += ", %s" % field.field_def()
 		if pkey:
-			sql += ", PRIMARY KEY (%s)" % pkey
+			sql += ", PRIMARY KEY (%s)" % self._quote(pkey)
 		sql += ")"
 		self._exec_sql_and_commit(sql)
 		return True
@@ -336,14 +355,14 @@ class GeoDB:
 	def rename_table(self, table, new_table, schema=None):
 		""" rename a table in database """
 		table_name = self._table_name(schema, table)
-		sql = "ALTER TABLE %s RENAME TO %s" % (table_name, new_table)
+		sql = "ALTER TABLE %s RENAME TO %s" % (table_name, self._quote(new_table))
 		self._exec_sql_and_commit(sql)
 		
 		# update geometry_columns if postgis is enabled
 		if self.has_postgis:
-			sql = "UPDATE geometry_columns SET f_table_name='%s' WHERE f_table_name='%s'" % (new_table, table)
+			sql = "UPDATE geometry_columns SET f_table_name='%s' WHERE f_table_name='%s'" % (self._quote_str(new_table), self._quote_str(table))
 			if schema is not None:
-				sql += " AND f_table_schema='%s'" % schema
+				sql += " AND f_table_schema='%s'" % self._quote_str(schema)
 			self._exec_sql_and_commit(sql)
 		
 	def create_view(self, name, query, schema=None):
@@ -362,17 +381,17 @@ class GeoDB:
 		
 	def create_schema(self, schema):
 		""" create a new empty schema in database """
-		sql = "CREATE SCHEMA %s" % schema
+		sql = "CREATE SCHEMA %s" % self._quote(schema)
 		self._exec_sql_and_commit(sql)
 		
 	def delete_schema(self, schema):
 		""" drop (empty) schema from database """
-		sql = "DROP SCHEMA %s" % schema
+		sql = "DROP SCHEMA %s" % self._quote(schema)
 		self._exec_sql_and_commit(sql)
 		
 	def rename_schema(self, schema, new_schema):
 		""" rename a schema in database """
-		sql = "ALTER SCHEMA %s RENAME TO %s" % (schema, new_schema)
+		sql = "ALTER SCHEMA %s RENAME TO %s" % (self._quote(schema), self._quote(new_schema))
 		self._exec_sql_and_commit(sql)
 		
 	def table_add_column(self, table, field, schema=None):
@@ -384,41 +403,41 @@ class GeoDB:
 	def table_delete_column(self, table, field, schema=None):
 		""" delete column from a table """
 		table_name = self._table_name(schema, table)
-		sql = "ALTER TABLE %s DROP %s" % (table_name, field)
+		sql = "ALTER TABLE %s DROP %s" % (table_name, self._quote(field))
 		self._exec_sql_and_commit(sql)
 		
 	def table_column_rename(self, table, name, new_name, schema=None):
 		""" rename column in a table """
 		table_name = self._table_name(schema, table)
-		sql = "ALTER TABLE %s RENAME %s TO %s" % (table_name, name, new_name)
+		sql = "ALTER TABLE %s RENAME %s TO %s" % (table_name, self._quote(name), self._quote(new_name))
 		self._exec_sql_and_commit(sql)
 		
 		# update geometry_columns if postgis is enabled
 		if self.has_postgis:
-			sql = "UPDATE geometry_columns SET f_geometry_column='%s' WHERE f_geometry_column='%s' AND f_table_name='%s'" % (new_name, name, table)
+			sql = "UPDATE geometry_columns SET f_geometry_column='%s' WHERE f_geometry_column='%s' AND f_table_name='%s'" % (self._quote_str(new_name), self._quote_str(name), self._quote_str(table))
 			if schema is not None:
-				sql += " AND f_table_schema='%s'" % schema
+				sql += " AND f_table_schema='%s'" % self._quote(schema)
 			self._exec_sql_and_commit(sql)
 
 	def table_column_set_type(self, table, column, data_type, schema=None):
 		""" change column type """
 		table_name = self._table_name(schema, table)
-		sql = "ALTER TABLE %s ALTER %s TYPE %s" % (table_name, column, data_type)
+		sql = "ALTER TABLE %s ALTER %s TYPE %s" % (table_name, self._quote(column), data_type)
 		self._exec_sql_and_commit(sql)
 		
 	def table_column_set_default(self, table, column, default, schema=None):
 		""" change column's default value. If default=None drop default value """
 		table_name = self._table_name(schema, table)
 		if default:
-			sql = "ALTER TABLE %s ALTER %s SET DEFAULT %s" % (table_name, column, default)
+			sql = "ALTER TABLE %s ALTER %s SET DEFAULT %s" % (table_name, self._quote(column), default)
 		else:
-			sql = "ALTER TABLE %s ALTER %s DROP DEFAULT" % (table_name, column)
+			sql = "ALTER TABLE %s ALTER %s DROP DEFAULT" % (table_name, self._quote(column))
 		self._exec_sql_and_commit(sql)
 		
 	def table_column_set_null(self, table, column, is_null, schema=None):
 		""" change whether column can contain null values """
 		table_name = self._table_name(schema, table)
-		sql = "ALTER TABLE %s ALTER %s " % (table_name, column)
+		sql = "ALTER TABLE %s ALTER %s " % (table_name, self._quote(column))
 		if is_null:
 			sql += "DROP NOT NULL"
 		else:
@@ -428,30 +447,32 @@ class GeoDB:
 	def table_add_primary_key(self, table, column, schema=None):
 		""" add a primery key (with one column) to a table """
 		table_name = self._table_name(schema, table)
-		sql = "ALTER TABLE %s ADD PRIMARY KEY (%s)" % (table_name, column)
+		sql = "ALTER TABLE %s ADD PRIMARY KEY (%s)" % (table_name, self._quote(column))
 		self._exec_sql_and_commit(sql)
 		
 	def table_add_unique_constraint(self, table, column, schema=None):
 		""" add a unique constraint to a table """
 		table_name = self._table_name(schema, table)
-		sql = "ALTER TABLE %s ADD UNIQUE (%s)" % (table_name, column)
+		sql = "ALTER TABLE %s ADD UNIQUE (%s)" % (table_name, self._quote(column))
 		self._exec_sql_and_commit(sql)
 	
 	def table_delete_constraint(self, table, constraint, schema=None):
 		""" delete constraint in a table """
 		table_name = self._table_name(schema, table)
-		sql = "ALTER TABLE %s DROP CONSTRAINT %s" % (table_name, constraint)
+		sql = "ALTER TABLE %s DROP CONSTRAINT %s" % (table_name, self._quote(constraint))
 		self._exec_sql_and_commit(sql)
 		
 	def create_index(self, table, name, column, schema=None):
 		""" create index on one column using default options """
 		table_name = self._table_name(schema, table)
-		sql = "CREATE INDEX %s ON %s (%s)" % (name, table_name, column)
+		idx_name = self._quote(name)
+		sql = "CREATE INDEX %s ON %s (%s)" % (idx_name, table_name, self._quote(column))
 		self._exec_sql_and_commit(sql)
 	
 	def create_spatial_index(self, table, schema=None, geom_column='the_geom'):
 		table_name = self._table_name(schema, table)
-		sql = "CREATE INDEX sidx_%s ON %s USING GIST(%s GIST_GEOMETRY_OPS)" % (table, table_name, geom_column)
+		idx_name = self._quote("sidx_"+table)
+		sql = "CREATE INDEX %s ON %s USING GIST(%s GIST_GEOMETRY_OPS)" % (idx_name, table_name, self._quote(geom_column))
 		self._exec_sql_and_commit(sql)
 		
 	def delete_index(self, name, schema=None):
@@ -461,14 +482,14 @@ class GeoDB:
 		
 	def get_database_privileges(self):
 		""" db privileges: (can create schemas, can create temp. tables) """
-		sql = "SELECT has_database_privilege('%s', 'CREATE'), has_database_privilege('%s', 'TEMP')" % (self.dbname, self.dbname)
+		sql = "SELECT has_database_privilege('%(d)s', 'CREATE'), has_database_privilege('%(d)s', 'TEMP')" % { 'd' : self._quote_str(self.dbname) }
 		c = self.con.cursor()
 		self._exec_sql(c, sql)
 		return c.fetchone()
 		
 	def get_schema_privileges(self, schema):
 		""" schema privileges: (can create new objects, can access objects in schema) """
-		sql = "SELECT has_schema_privilege('%s', 'CREATE'), has_schema_privilege('%s', 'USAGE')" % (schema, schema)
+		sql = "SELECT has_schema_privilege('%(s)s', 'CREATE'), has_schema_privilege('%(s)s', 'USAGE')" % { 's' : self._quote_str(schema) }
 		c = self.con.cursor()
 		self._exec_sql(c, sql)
 		return c.fetchone()
@@ -476,8 +497,8 @@ class GeoDB:
 	def get_table_privileges(self, table, schema=None):
 		""" table privileges: (select, insert, update, delete) """
 		t = self._table_name(schema, table)
-		sql = """SELECT has_table_privilege('%s', 'SELECT'), has_table_privilege('%s', 'INSERT'),
-		                has_table_privilege('%s', 'UPDATE'), has_table_privilege('%s', 'DELETE')""" % (t,t,t,t)
+		sql = """SELECT has_table_privilege('%(t)s', 'SELECT'), has_table_privilege('%(t)s', 'INSERT'),
+		                has_table_privilege('%(t)s', 'UPDATE'), has_table_privilege('%(t)s', 'DELETE')""" % { 't': self._quote_str(t) }
 		c = self.con.cursor()
 		self._exec_sql(c, sql)
 		return c.fetchone()
@@ -489,6 +510,7 @@ class GeoDB:
 		t = self._table_name(schema, table)
 		sql = ""
 		for value in values:
+			# TODO: quote values?
 			if sql: sql += ", "
 			sql += value
 		sql = "INSERT INTO %s VALUES (%s)" % (t, sql)
@@ -512,14 +534,26 @@ class GeoDB:
 		except DbError, e:
 			self.con.rollback()
 			raise
+
+	def _quote(self, identifier):
+		""" quote identifier if needed """
+		identifier = str(identifier) # make sure it's python string
+		# is it needed to quote the identifier?
+		if self.re_ident_ok.match(identifier) is not None:
+			return identifier
+		# it's needed - let's quote it (and double the double-quotes)
+		return '"%s"' % identifier.replace('"', '""')
+	
+	def _quote_str(self, txt):
+		""" make the string safe - replace ' with '' """
+		txt = str(txt) # make sure it's python string
+		return txt.replace("'", "''")
 		
 	def _table_name(self, schema, table):
-		table = '"%s"' % table
-		if schema and schema.find(' ') != -1: schema = '"%s"' % schema
 		if not schema:
-			return table
+			return self._quote(table)
 		else:
-			return "%s.%s" % (schema, table)
+			return "%s.%s" % (self._quote(schema), self._quote(table))
 		
 
 # for debugging / testing

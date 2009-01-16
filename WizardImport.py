@@ -9,7 +9,7 @@ import postgis_utils
 
 class IntroPage(QWizardPage):
 	
-	Encodings = ["UTF-8","CP1250","ISO8859-2"]
+	Encodings = ["UTF-8","ISO8859-1","ISO8859-2","CP1250"]
 	
 	def __init__(self, parent=None):
 		QWizardPage.__init__(self, parent)

@@ -431,8 +431,11 @@ class ManagerWindow(QMainWindow):
 	def loadMapPreview(self, item):
 		""" if has geometry column load to map canvas """
 		if item and item.geom_type:
-			con = self.db.con_info() + " table=%s (%s) sql=" % (item.name, item.geom_column)
-			vl = qgis.core.QgsVectorLayer(con, "test", "postgres")
+			uri = qgis.core.QgsDataSourceURI()
+			uri.setConnection(self.db.host, str(self.db.port), self.db.dbname, self.db.user, self.db.passwd)
+			uri.setDataSource(item.schema().name, item.name, item.geom_column, "")
+			#con = self.db.con_info() + " table=%s (%s) sql=" % (item.name, item.geom_column)
+			vl = qgis.core.QgsVectorLayer(uri.uri(), item.name, "postgres")
 			if not vl.isValid():
 				newLayerId = None
 				self.preview.setLayerSet( [] )
@@ -585,7 +588,10 @@ class ManagerWindow(QMainWindow):
 		
 	def loadData(self):
 		dlg = DlgLoadData(self, self.db)
-		dlg.exec_()
+		if not dlg.exec_():
+			return
+		
+		self.refreshTable()
 
 	def dumpData(self):
 		dlg = DlgDumpData(self, self.db)
@@ -593,10 +599,13 @@ class ManagerWindow(QMainWindow):
 		
 	def importData(self):
 		wizard = WizardImport(self, self.db)
-		wizard.exec_()
+		if not wizard.exec_():
+			return
+	
+		self.refreshTable()
 	
 	def exportData(self):
-		pass
+		QMessageBox.information(self, "sorry", "wizard not implemented yet.")
 		
 	def about(self):
 		""" show about box """
