@@ -12,6 +12,7 @@ http://www.postgresql.org/docs/8.0/static/functions-info.html
 """
 
 import psycopg2
+import psycopg2.extensions # for isolation levels
 import re
 
 class TableAttribute:
@@ -394,6 +395,11 @@ class GeoDB:
 		sql = "ALTER SCHEMA %s RENAME TO %s" % (self._quote(schema), self._quote(new_schema))
 		self._exec_sql_and_commit(sql)
 		
+		# update geometry_columns if postgis is enabled
+		if self.has_postgis:
+			sql = "UPDATE geometry_columns SET f_table_schema='%s' WHERE f_table_schema='%s'" % (self._quote_str(new_schema), self._quote_str(schema)) 
+			self._exec_sql_and_commit(sql)
+		
 	def table_add_column(self, table, field, schema=None):
 		""" add a column to table (passed as TableField instance) """
 		table_name = self._table_name(schema, table)
@@ -462,6 +468,20 @@ class GeoDB:
 		sql = "ALTER TABLE %s DROP CONSTRAINT %s" % (table_name, self._quote(constraint))
 		self._exec_sql_and_commit(sql)
 		
+	def table_move_to_schema(self, table, new_schema, schema=None):
+		if new_schema == schema:
+			return
+		table_name = self._table_name(schema, table)
+		sql = "ALTER TABLE %s SET SCHEMA %s" % (table_name, self._quote(new_schema))
+		self._exec_sql_and_commit(sql)
+		
+		# update geometry_columns if postgis is enabled
+		if self.has_postgis:
+			sql = "UPDATE geometry_columns SET f_table_schema='%s' WHERE f_table_name='%s'" % (self._quote_str(new_schema), self._quote_str(table))
+			if schema is not None:
+				sql += " AND f_table_schema='%s'" % self._quote_str(schema)
+			self._exec_sql_and_commit(sql)
+	
 	def create_index(self, table, name, column, schema=None):
 		""" create index on one column using default options """
 		table_name = self._table_name(schema, table)
@@ -502,6 +522,15 @@ class GeoDB:
 		c = self.con.cursor()
 		self._exec_sql(c, sql)
 		return c.fetchone()
+	
+	def vacuum_analyze(self, table, schema=None):
+		""" run vacuum analyze on a table """
+		t = self._table_name(schema, table)
+		# vacuum analyze must be run outside transaction block - we have to change isolation level
+		self.con.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+		c = self.con.cursor()
+		self._exec_sql(c, "VACUUM ANALYZE %s" % t)
+		self.con.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
 	
 	def insert_table_row(self, table, values, schema=None, cursor=None):
 		""" insert a row with specified values to a table.

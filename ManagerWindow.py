@@ -51,21 +51,6 @@ class ManagerWindow(QMainWindow):
 		self.connect(self.tree.selectionModel(), SIGNAL("currentChanged(const QModelIndex&, const QModelIndex&)"), self.itemChanged)
 		self.connect(self.tree, SIGNAL("doubleClicked(const QModelIndex&)"), self.editTable)
 		self.connect(self.tree.model(), SIGNAL("dataChanged(const QModelIndex &, const QModelIndex &)"), self.refreshTable)
-		# actions
-		self.connect(self.actionCreateTable, SIGNAL("triggered(bool)"), self.createTable)
-		self.connect(self.actionEditTable, SIGNAL("triggered(bool)"), self.editTable)
-		self.connect(self.actionEmptyTable, SIGNAL("triggered(bool)"), self.emptyTable)
-		self.connect(self.actionDeleteTableView, SIGNAL("triggered(bool)"), self.deleteTable)
-		self.connect(self.actionCreateSchema, SIGNAL("triggered(bool)"), self.createSchema)
-		self.connect(self.actionDeleteSchema, SIGNAL("triggered(bool)"), self.deleteSchema)
-		self.connect(self.actionLoadData, SIGNAL("triggered(bool)"), self.loadData)
-		self.connect(self.actionDumpData, SIGNAL("triggered(bool)"), self.dumpData)
-		self.connect(self.actionImportData, SIGNAL("triggered(bool)"), self.importData)
-		self.connect(self.actionExportData, SIGNAL("triggered(bool)"), self.exportData)
-		self.connect(self.actionDbInfo, SIGNAL("triggered(bool)"), self.dbInfo)
-		self.connect(self.actionSqlWindow, SIGNAL("triggered(bool)"), self.sqlWindow)
-		self.connect(self.actionDbDisconnect, SIGNAL("triggered(bool)"), self.dbDisconnect)
-		self.connect(self.actionAbout, SIGNAL("triggered(bool)"), self.about)
 		# text metadata
 		self.connect(self.txtMetadata, SIGNAL("anchorClicked(const QUrl&)"), self.metadataLinkClicked)
 		
@@ -607,6 +592,40 @@ class ManagerWindow(QMainWindow):
 	def exportData(self):
 		QMessageBox.information(self, "sorry", "wizard not implemented yet.")
 		
+	def vacuumAnalyze(self):
+		""" run VACUUM ANALYZE on this table """
+		ptr = self.currentDatabaseItem()
+		if not ptr: return
+		if not isinstance(ptr, TableItem): #or ptr.is_view:
+			QMessageBox.information(self, "sorry", "select a TABLE for vacuum analyze")
+			return
+		
+		self.db.vacuum_analyze(ptr.name, ptr.schema().name)
+	
+		# update info
+		self.loadTableMetadata(ptr)
+	
+	def prepareMenuMoveToSchema(self):
+		""" populate menu with schemas """
+		self.menuMoveToSchema.clear()
+		for schema in self.db.list_schemas():
+			self.menuMoveToSchema.addAction(schema[1], self.moveToSchemaSlot)
+		
+	def moveToSchemaSlot(self):
+		""" find out what item called this slot """
+		self.moveToSchema(str(self.sender().text()))
+		
+	def moveToSchema(self, new_schema):
+		ptr = self.currentDatabaseItem()
+		if not ptr: return
+		if not isinstance(ptr, TableItem):
+			QMessageBox.information(self, "sorry", "select a table or schema")
+			return
+		
+		self.db.table_move_to_schema(ptr.name, new_schema, ptr.schema().name)
+		
+		self.refreshTable()
+		
 	def about(self):
 		""" show about box """
 		dlg = DlgAbout(self)
@@ -658,55 +677,50 @@ class ManagerWindow(QMainWindow):
 	
 	def createMenu(self):
 		
-		self.actionDbInfo = QAction("Show &info", self)
-		self.actionSqlWindow = QAction("&SQL window", self)
-		self.actionDbDisconnect = QAction("&Disconnect", self)
-		self.actionDbDisconnect.setEnabled(False)
-		
-		self.actionCreateSchema = QAction("&Create schema", self)
-		self.actionDeleteSchema = QAction("&Delete (empty) schema", self)
-		
-		self.actionCreateTable = QAction(QIcon(":/icons/toolbar/action_new_table.png"), "Create &table", self)
-		self.actionCreateView = QAction("Create &view", self)
-		self.actionEditTable = QAction(QIcon(":/icons/toolbar/action_edit_table.png"),"&Edit table", self)
-		self.actionDeleteTableView = QAction(QIcon(":/icons/toolbar/action_del_table.png"),"&Delete table/view", self)
-		self.actionEmptyTable = QAction("E&mpty table", self)
-		
-		self.actionLoadData = QAction("&Load data from shapefile", self)
-		self.actionDumpData = QAction("&Dump data to shapefile", self)
-		self.actionImportData = QAction(QIcon(":/icons/toolbar/action_import.png"), "&Import data", self)
-		self.actionExportData = QAction(QIcon(":/icons/toolbar/action_export.png"), "&Export data", self)
-		
-		
-		self.actionAbout = QAction("&About", self)
-		
 		self.menuDb     = QMenu("&Database", self)
 		self.menuSchema = QMenu("&Schema", self)
 		self.menuTable  = QMenu("&Table", self)
 		self.menuData   = QMenu("D&ata", self)
 		self.menuHelp   = QMenu("&Help", self)
 		
+		## MENU Database
 		self.actionsDb = self.listDatabases()
-		
 		for k,a in self.actionsDb.iteritems():
 			self.menuDb.addAction(a)
 			a.setCheckable(True)
 			self.connect(a, SIGNAL("triggered(bool)"), self.dbConnectSlot)
 		self.menuDb.addSeparator()
-		self.menuDb.addAction(self.actionDbInfo)
-		self.menuDb.addAction(self.actionSqlWindow)
+		self.menuDb.addAction("Show &info", self.dbInfo)
+		self.menuDb.addAction("&SQL window", self.sqlWindow)
 		self.menuDb.addSeparator()
-		self.menuDb.addAction(self.actionDbDisconnect)
+		self.actionDbDisconnect = self.menuDb.addAction("&Disconnect", self.dbDisconnect)
+		self.actionDbDisconnect.setEnabled(False)
 		
-		for a in [self.actionCreateSchema, self.actionDeleteSchema]:
-			self.menuSchema.addAction(a)
-		for a in [self.actionCreateTable, self.actionCreateView, self.actionEditTable, self.actionEmptyTable, self.actionDeleteTableView]:
-			self.menuTable.addAction(a)
-		for a in [self.actionLoadData, self.actionDumpData, self.actionImportData, self.actionExportData]:
-			self.menuData.addAction(a)
+		## MENU Schema
+		self.menuSchema.addAction("&Create schema", self.createSchema)
+		self.menuSchema.addAction("&Delete (empty) schema", self.deleteSchema)
 		
-		self.menuHelp.addAction(self.actionAbout)
+		## MENU Table
+		actionCreateTable = self.menuTable.addAction(QIcon(":/icons/toolbar/action_new_table.png"), "Create &table", self.createTable)
+		self.menuTable.addSeparator()
+		actionEditTable = self.menuTable.addAction(QIcon(":/icons/toolbar/action_edit_table.png"),"&Edit table", self.editTable)
+		self.menuTable.addAction("Run VACUUM &ANALYZE", self.vacuumAnalyze)
+		self.menuMoveToSchema = self.menuTable.addMenu("Move to &schema")
+		self.connect(self.menuMoveToSchema, SIGNAL("aboutToShow()"), self.prepareMenuMoveToSchema)
+		self.menuTable.addSeparator()
+		self.menuTable.addAction("E&mpty table", self.emptyTable)
+		actionDeleteTable = self.menuTable.addAction(QIcon(":/icons/toolbar/action_del_table.png"),"&Delete table/view", self.deleteTable)
 		
+		## MENU Data
+		self.menuData.addAction("&Load data from shapefile", self.loadData)
+		self.menuData.addAction("&Dump data to shapefile", self.dumpData)
+		actionImportData = self.menuData.addAction(QIcon(":/icons/toolbar/action_import.png"), "&Import data", self.importData)
+		actionExportData = self.menuData.addAction(QIcon(":/icons/toolbar/action_export.png"), "&Export data", self.exportData)
+		
+		## MENU About
+		self.menuHelp.addAction("&About", self.about)
+		
+		## menu bar
 		self.menuBar = QMenuBar(self)
 		self.menuBar.addMenu(self.menuDb)
 		self.menuBar.addMenu(self.menuSchema)
@@ -719,10 +733,10 @@ class ManagerWindow(QMainWindow):
 		self.toolBar = QToolBar(self)
 		self.toolBar.setObjectName("PostGIS_Manager_ToolBar")
 		self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-		self.toolBar.addAction(self.actionCreateTable)
-		self.toolBar.addAction(self.actionEditTable)
-		self.toolBar.addAction(self.actionDeleteTableView)
+		self.toolBar.addAction(actionCreateTable)
+		self.toolBar.addAction(actionEditTable)
+		self.toolBar.addAction(actionDeleteTable)
 		self.toolBar.addSeparator()
-		self.toolBar.addAction(self.actionImportData)
-		self.toolBar.addAction(self.actionExportData)
+		self.toolBar.addAction(actionImportData)
+		self.toolBar.addAction(actionExportData)
 		self.addToolBar(self.toolBar)
