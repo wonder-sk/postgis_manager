@@ -117,10 +117,10 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		if not dlg.exec_():
 			return
 		
-		name = str(dlg.editName.text())
-		data_type = str(dlg.cboType.currentText())
+		name = unicode(dlg.editName.text())
+		data_type = unicode(dlg.cboType.currentText())
 		is_null = dlg.chkNull.isChecked()
-		default = str(dlg.editDefault.text())
+		default = unicode(dlg.editDefault.text())
 		if dlg.editLength.text().count() > 0:
 			x = dlg.editLength.text().toInt()
 			modifier = x[0] if x[1] else None
@@ -146,7 +146,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		if not dlg.exec_():
 			return
 		
-		name = str(dlg.editName.text())
+		name = unicode(dlg.editName.text())
 		geom_type = str(dlg.cboType.currentText())
 		dim = dlg.spinDim.value()
 		try:
@@ -173,7 +173,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		m = self.viewFields.model()
 		# get column in table
 		# (there can be missing number if someone deleted a column)
-		column = str(m.item(num, 1).text())
+		column = unicode(m.item(num, 1).text())
 		for col in self.fields:
 			if col.name == column:
 				break
@@ -183,10 +183,10 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		if not dlg.exec_():
 			return
 		
-		new_name = str(dlg.editName.text())
-		new_data_type = str(dlg.cboType.currentText())
+		new_name = unicode(dlg.editName.text())
+		new_data_type = unicode(dlg.cboType.currentText())
 		new_is_null = dlg.chkNull.isChecked()
-		new_default = str(dlg.editDefault.text())
+		new_default = unicode(dlg.editDefault.text())
 		
 		if dlg.editLength.text().count() > 0:
 			x = dlg.editLength.text().toInt()
@@ -283,7 +283,7 @@ class DlgTableProperties(QDialog, Ui_DlgTableProperties):
 		if not dlg.exec_():
 			return
 		
-		column = str(dlg.cboColumn.currentText())
+		column = unicode(dlg.cboColumn.currentText())
 		
 		self.emit(SIGNAL("aboutToChangeTable()"))
 		

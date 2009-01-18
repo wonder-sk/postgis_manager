@@ -239,12 +239,12 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 	def createTable(self):
 		""" create table with chosen fields, optionally add a geometry column """
 		
-		schema = str(self.cboSchema.currentText())
+		schema = unicode(self.cboSchema.currentText())
 		if len(schema) == 0:
 			QMessageBox.information(self, "sorry", "select schema!")
 			return
 		
-		table = str(self.editName.text())
+		table = unicode(self.editName.text())
 		if len(table) == 0:
 			QMessageBox.information(self, "sorry", "enter table name!")
 			return
@@ -256,7 +256,7 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 		
 		useGeomColumn = self.chkGeomColumn.isChecked()
 		if useGeomColumn:
-			geomColumn = str(self.editGeomColumn.text())
+			geomColumn = unicode(self.editGeomColumn.text())
 			geomType = str(self.cboGeomType.currentText())
 			geomDim = self.spinGeomDim.value()
 			try:
@@ -270,13 +270,13 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 		
 		flds = []
 		for row in xrange(m.rowCount()):
-			fldName = str(m.data(m.index(row,0,QModelIndex())).toString())
-			fldType = str(m.data(m.index(row,1,QModelIndex())).toString())
+			fldName = unicode(m.data(m.index(row,0,QModelIndex())).toString())
+			fldType = unicode(m.data(m.index(row,1,QModelIndex())).toString())
 			fldNull = m.data(m.index(row,2,QModelIndex())).toBool()
 			
 			flds.append( postgis_utils.TableField(fldName, fldType, fldNull) )
 			
-		pkey = str(self.cboPrimaryKey.currentText())
+		pkey = unicode(self.cboPrimaryKey.currentText())
 				
 		if self.db:
 			

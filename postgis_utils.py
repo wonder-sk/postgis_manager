@@ -15,6 +15,9 @@ import psycopg2
 import psycopg2.extensions # for isolation levels
 import re
 
+# use unicode!
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
+
 class TableAttribute:
 	def __init__(self, row):
 		self.num, self.name, self.data_type, self.char_max_len, self.modifier, self.notnull, self.hasdefault, self.default = row
@@ -53,8 +56,9 @@ class TableIndex:
 
 class DbError(Exception):
 	def __init__(self, message, query=None):
-		self.message = message
-		self.query = query
+		# save error. funny that the variables are in utf8, not 
+		self.message = unicode(message, 'utf-8')
+		self.query = unicode(query, 'utf-8')
 	def __str__(self):
 		return "MESSAGE: %s\nQUERY: %s" % (self.message, self.query)
 
@@ -566,23 +570,23 @@ class GeoDB:
 
 	def _quote(self, identifier):
 		""" quote identifier if needed """
-		identifier = str(identifier) # make sure it's python string
+		identifier = unicode(identifier) # make sure it's python unicode string
 		# is it needed to quote the identifier?
 		if self.re_ident_ok.match(identifier) is not None:
 			return identifier
 		# it's needed - let's quote it (and double the double-quotes)
-		return '"%s"' % identifier.replace('"', '""')
+		return u'"%s"' % identifier.replace('"', '""')
 	
 	def _quote_str(self, txt):
 		""" make the string safe - replace ' with '' """
-		txt = str(txt) # make sure it's python string
+		txt = unicode(txt) # make sure it's python unicode string
 		return txt.replace("'", "''")
 		
 	def _table_name(self, schema, table):
 		if not schema:
 			return self._quote(table)
 		else:
-			return "%s.%s" % (self._quote(schema), self._quote(table))
+			return u"%s.%s" % (self._quote(schema), self._quote(table))
 		
 
 # for debugging / testing

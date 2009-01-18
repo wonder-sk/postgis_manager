@@ -54,7 +54,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		if not self.db:
 			return
 		
-		schema = str(self.cboSchema.currentText())
+		schema = unicode(self.cboSchema.currentText())
 		tables = self.db.list_geotables(schema)
 		self.cboTable.clear()
 		for table in tables:
@@ -114,7 +114,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		if self.chkSrid.isChecked():
 			args += ['-s', str(self.editSrid.text())]
 		if self.chkGeomColumn.isChecked():
-			args += ['-g', str(self.editGeomColumn.text())]
+			args += ['-g', unicode(self.editGeomColumn.text())]
 		if self.chkEncoding.isChecked():
 			args += ['-W', str(self.cboEncoding.currentText())]
 		if self.chkSinglePart.isChecked():
@@ -123,14 +123,14 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 			args.append('-I')
 			
 		# shapefile
-		shpfile = str(self.editShapefile.text())
+		shpfile = unicode(self.editShapefile.text())
 		args.append(shpfile) 
 		
 		# table name
 		if self.cboSchema.currentText().isEmpty():
-			table = str(self.cboTable.currentText())
+			table = unicode(self.cboTable.currentText())
 		else:
-			table = str(self.cboSchema.currentText())+"."+str(self.cboTable.currentText())
+			table = unicode(self.cboSchema.currentText())+"."+unicode(self.cboTable.currentText())
 		args.append(table)
 		
 		print args

@@ -40,7 +40,7 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 
 	def executeSql(self):
 		
-		txt = str(self.editSql.toPlainText())
+		txt = unicode(self.editSql.toPlainText())
 		
 		m = self.viewResult.model()
 		m.clear()
@@ -51,7 +51,7 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 			c = self.db.con.cursor()
 			self.db._exec_sql(c, txt)
 			for row in c.fetchall():
-				m.appendRow( [ QStandardItem(str(i)) for i in row ] )
+				m.appendRow( [ QStandardItem(unicode(i)) for i in row ] )
 			c.close()
 			QApplication.restoreOverrideCursor()
 			QMessageBox.information(self, "finished", "query returned %d rows." % c.rowcount)

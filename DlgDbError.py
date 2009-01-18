@@ -11,6 +11,8 @@ class DlgDbError(QDialog, Ui_DlgDbError):
 		QDialog.__init__(self, parent)
 		
 		self.setupUi(self)
+		
+		print type(e.message), type(e.query), e.message, e.query
 
 		msg = "<pre>" + e.message.replace('<','&lt;') + "</pre>"
 		query = "<pre>" + e.query.replace('<','&lt;') + "</pre>"

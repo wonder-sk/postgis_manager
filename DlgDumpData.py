@@ -43,7 +43,7 @@ class DlgDumpData(QDialog, Ui_DlgDumpData):
 		if not self.db:
 			return
 		
-		schema = str(self.cboSchema.currentText())
+		schema = unicode(self.cboSchema.currentText())
 		tables = self.db.list_geotables(schema)
 		self.cboTable.clear()
 		for table in tables:
@@ -69,7 +69,7 @@ class DlgDumpData(QDialog, Ui_DlgDumpData):
 		args = ["pgsql2shp"]
 		
 		# output shapefilename
-		output = str(self.editShapefile.text())
+		output = unicode(self.editShapefile.text())
 		args += [ '-f', output ]
 		
 		# connection options
@@ -87,7 +87,7 @@ class DlgDumpData(QDialog, Ui_DlgDumpData):
 			args.append('-b')
 		
 		# database and table
-		table = str(self.cboSchema.currentText()) + '.' + str(self.cboTable.currentText())
+		table = unicode(self.cboSchema.currentText()) + '.' + unicode(self.cboTable.currentText())
 		args += [ self.db.dbname, table ]
 		
 		print args

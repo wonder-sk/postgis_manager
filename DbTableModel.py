@@ -28,6 +28,7 @@ class DbTableModel(QAbstractTableModel):
 		
 		# create named cursor and run query
 		cur_name = ("\"db_table_"+self.table+"\"").replace(' ', '_')
+		cur_name = cur_name.encode('ascii','replace').replace('?', '_')
 		self.cur = self.db.con.cursor(cur_name)
 		self.cur.execute("SELECT %s FROM %s" % (fields_txt, self.db._table_name(self.schema, self.table)))
 		

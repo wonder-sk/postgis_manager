@@ -235,7 +235,7 @@ class DatabaseModel(QAbstractItemModel):
 			return False
 			
 		item = index.internalPointer()
-		new_name = str(value.toString())
+		new_name = unicode(value.toString())
 		if new_name == item.name:
 			return False
 		
@@ -261,6 +261,6 @@ class DatabaseModel(QAbstractItemModel):
 				return False
 			
 		else:
-			print "set", str(value.toString()), role
+			print "set", unicode(value.toString()), role
 			return False
 

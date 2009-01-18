@@ -171,7 +171,7 @@ class WizardImport(QWizard):
 		flds = pr.fields()
 		for (i,fld) in flds.iteritems():
 			
-			name = str(fld.name())
+			name = unicode(fld.name())
 			modifier = None
 			if fld.type() == QVariant.Int:
 				data_type = "int"
@@ -194,8 +194,8 @@ class WizardImport(QWizard):
 	def do_dbf_import(self):
 		""" last step: create table and import data """
 		
-		tablename = str(self.field("tablename").toString())
-		pkey = str(self.field("pkey").toString())
+		tablename = unicode(self.field("tablename").toString())
+		pkey = unicode(self.field("pkey").toString())
 		if pkey == "(none)": pkey = None
 		
 		# create the table

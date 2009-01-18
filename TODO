@@ -1,5 +1,4 @@
 - create views
-- vacuum, analyze
 - import non-spatial tables, e.g. csv
 - add geospatial support to db
 - geometry_columns validity check

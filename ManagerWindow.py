@@ -75,7 +75,7 @@ class ManagerWindow(QMainWindow):
 		keys = settings.childGroups()
 		
 		for key in keys:
-			actionsDb[str(key)] = QAction(key, self)
+			actionsDb[unicode(key)] = QAction(key, self)
 			
 		settings.endGroup()
 		
@@ -83,7 +83,7 @@ class ManagerWindow(QMainWindow):
 	
 		
 	def dbConnectSlot(self):
-		sel = str(self.sender().text())
+		sel = unicode(self.sender().text())
 		print "connect", sel
 		self.dbConnect(sel)
 		
@@ -92,17 +92,17 @@ class ManagerWindow(QMainWindow):
 		
 		settings = QSettings()
 		if selected == None:
-			selected = str(settings.value("/PostgreSQL/connections/selected").toString())
-		print "selected:" + selected
+			selected = unicode(settings.value("/PostgreSQL/connections/selected").toString())
+		print "selected:", selected
 		
 		# if there's open database already, get rid of it
 		if self.db:
 			self.dbDisconnect()
 		
 		# get connection details from QSettings
-		key = "/PostgreSQL/connections/" + selected
+		key = u"/PostgreSQL/connections/" + selected
 		get_value = lambda x: settings.value( key + "/" + x )
-		get_value_str = lambda x: str(get_value(x).toString())
+		get_value_str = lambda x: unicode(get_value(x).toString())
 		host, database, username, password = map(get_value_str, ["host", "database", "username", "password"])
 		port = get_value("port").toInt()[0]
 		
@@ -392,7 +392,7 @@ class ManagerWindow(QMainWindow):
 			self.loadMapPreview(item)
 			
 	def metadataLinkClicked(self, url):
-		print str(url.path())
+		print unicode(url.path())
 		
 	
 	def unloadDbTable(self):
@@ -613,7 +613,7 @@ class ManagerWindow(QMainWindow):
 		
 	def moveToSchemaSlot(self):
 		""" find out what item called this slot """
-		self.moveToSchema(str(self.sender().text()))
+		self.moveToSchema(unicode(self.sender().text()))
 		
 	def moveToSchema(self, new_schema):
 		ptr = self.currentDatabaseItem()

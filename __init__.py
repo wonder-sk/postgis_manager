@@ -6,7 +6,7 @@ def description():
 	return "Manage your PostGIS database"
 
 def version():
-	return "Version 0.4.3"
+	return "Version 0.4.5"
 
 def qgisMinimumVersion():
 	return "1.0.0"

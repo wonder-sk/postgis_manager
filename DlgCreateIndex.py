@@ -38,8 +38,8 @@ class DlgCreateIndex(QDialog, Ui_DlgCreateIndex):
 			
 	def createIndex(self):
 
-		column = str(self.cboColumn.currentText())
-		name = str(self.editName.text())
+		column = unicode(self.cboColumn.currentText())
+		name = unicode(self.editName.text())
 		if not name:
 			QMessageBox.critical(self, "error", "Please enter some name for the index")
 			return
