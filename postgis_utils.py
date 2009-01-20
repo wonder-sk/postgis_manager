@@ -58,7 +58,7 @@ class DbError(Exception):
 	def __init__(self, message, query=None):
 		# save error. funny that the variables are in utf8, not 
 		self.message = unicode(message, 'utf-8')
-		self.query = unicode(query, 'utf-8')
+		self.query = unicode(query, 'utf-8') if query is not None else None
 	def __str__(self):
 		return "MESSAGE: %s\nQUERY: %s" % (self.message, self.query)
 

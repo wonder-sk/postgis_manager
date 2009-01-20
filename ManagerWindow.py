@@ -84,7 +84,7 @@ class ManagerWindow(QMainWindow):
 		
 	def dbConnectSlot(self):
 		sel = unicode(self.sender().text())
-		print "connect", sel
+		print "connect", sel.encode('utf-8')
 		self.dbConnect(sel)
 		
 
@@ -93,7 +93,7 @@ class ManagerWindow(QMainWindow):
 		settings = QSettings()
 		if selected == None:
 			selected = unicode(settings.value("/PostgreSQL/connections/selected").toString())
-		print "selected:", selected
+		print "selected:", selected.encode('utf-8')
 		
 		# if there's open database already, get rid of it
 		if self.db:
@@ -392,7 +392,7 @@ class ManagerWindow(QMainWindow):
 			self.loadMapPreview(item)
 			
 	def metadataLinkClicked(self, url):
-		print unicode(url.path())
+		print unicode(url.path()).encode('utf-8')
 		
 	
 	def unloadDbTable(self):
