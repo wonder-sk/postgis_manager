@@ -7,6 +7,46 @@ from PyQt4.QtGui import *
 
 import postgis_utils
 
+from types import NoneType
+
+
+class SqlTableModel(QAbstractTableModel):
+	
+	def __init__(self, cursor, parent=None):
+		QAbstractTableModel.__init__(self, parent)
+		
+		self.resdata = cursor.fetchall()
+		
+		self.header = map(lambda x: x[0], cursor.description)
+		
+		
+	def rowCount(self, parent):
+		return len(self.resdata)
+	
+	def columnCount(self, parent):
+		return len(self.header)
+	
+	def data(self, index, role):
+		if role != Qt.DisplayRole:
+			return QVariant()
+		
+		val = self.resdata[ index.row() ][ index.column() ]
+		if type(val) == NoneType:
+			return QVariant("NULL")
+		else:
+			return QVariant(val)		
+	
+	def headerData(self, section, orientation, role):
+		if role != Qt.DisplayRole:
+			return QVariant()
+		
+		if orientation == Qt.Vertical:
+			# header for a row
+			return QVariant(section+1)
+		else:
+			# header for a column
+			return QVariant(self.header[section])
+
 
 class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 
@@ -24,9 +64,6 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 		self.connect(self.btnClear, SIGNAL("clicked()"), self.clearSql)
 		self.connect(self.buttonBox.button(QDialogButtonBox.Close), SIGNAL("clicked()"), self.close)
 		
-		m = QStandardItemModel(self)
-		self.viewResult.setModel(m)
-		
 		
 	def closeEvent(self, e):
 		""" save window state """
@@ -42,19 +79,22 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 		
 		txt = unicode(self.editSql.toPlainText())
 		
-		m = self.viewResult.model()
-		m.clear()
-		
 		QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
 
 		try:
 			c = self.db.con.cursor()
+			t = QTime()
+			t.start()
 			self.db._exec_sql(c, txt)
-			for row in c.fetchall():
-				m.appendRow( [ QStandardItem(unicode(i)) for i in row ] )
+			secs = t.elapsed() / 1000.0
+			
+			self.viewResult.setModel( SqlTableModel(c, self.viewResult) )
 			c.close()
+			
+			self.lblResult.setText("%d rows, %.1f seconds" % (c.rowcount, secs))
+			
 			QApplication.restoreOverrideCursor()
-			QMessageBox.information(self, "finished", "query returned %d rows." % c.rowcount)
+		
 		except postgis_utils.DbError, e:
 			self.db.con.rollback()
 			QApplication.restoreOverrideCursor()

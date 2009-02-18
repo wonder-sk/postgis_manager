@@ -311,9 +311,13 @@ class ManagerWindow(QMainWindow):
 		
 		html += '<div style="margin-top:30px; margin-left:10px;"><h2>PostGIS</h2>'
 		if item.geom_type:
-			html += '<table><tr><td>Column:<td>%s<tr><td>Geometry:<td>%s' % (item.geom_column, item.geom_type)
+			html += '<table><tr><td width=150>Column:<td>%s<tr><td>Geometry:<td>%s' % (item.geom_column, item.geom_type)
 			if item.geom_dim: # only if we have info from geometry_columns
-				html += '<tr><td>Dimension:<td>%d<tr><td>SRID:<td>%d' % (item.geom_dim, item.geom_srid)
+				if item.geom_srid != -1:
+					sr_info = self.db.sr_info_for_srid(item.geom_srid)
+				else:
+					sr_info = "Undefined"
+				html += '<tr><td>Dimension:<td>%d<tr><td>Spatial ref:<td>%s (%d)' % (item.geom_dim, sr_info, item.geom_srid)
 			html += '</table>'
 			if item.geom_type == 'geometry':
 				html += '<p><img src=":/icons/warning-20px.png"> &nbsp; There isn\'t entry in geometry_columns!</p>'

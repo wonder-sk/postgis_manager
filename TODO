@@ -11,6 +11,3 @@ suggestions by Jeremy Palmer:
 - don't render map unless its tab is active
 - allow cancel rendering with ESC
 - show layer extents (use estimated_extent())
-- display SRID in user friendly way (name, parameters,...)
-- faster loading of results in SQL window
-- show query time

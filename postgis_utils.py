@@ -100,18 +100,15 @@ class GeoDB:
 		self.user = user
 		self.passwd = passwd
 		
+		if self.dbname == '' or self.dbname is None:
+			self.dbname = self.user
+		
 		try:
 			self.con = psycopg2.connect(self.con_info())
 		except psycopg2.OperationalError, e:
 			raise DbError(e.message)
 		
-		# check whether DB has postgis support
-		try:
-			self.get_postgis_info()
-			self.has_postgis = True
-		except DbError, e:
-			self.con.rollback()
-			self.has_postgis = False
+		self.has_postgis = self.check_postgis()
 		
 	def con_info(self):
 		con_str = ''
@@ -126,6 +123,12 @@ class GeoDB:
 		c = self.con.cursor()
 		self._exec_sql(c, "SELECT version()")
 		return c.fetchone()[0]
+	
+	def check_postgis(self):
+		""" check whether postgis_version is present in catalog """
+		c = self.con.cursor()
+		self._exec_sql(c, "SELECT COUNT(*) FROM pg_proc WHERE proname = 'postgis_version'")
+		return (c.fetchone()[0] > 0)
 	
 	def get_postgis_info(self):
 		""" returns tuple about postgis support:
@@ -535,6 +538,22 @@ class GeoDB:
 		c = self.con.cursor()
 		self._exec_sql(c, "VACUUM ANALYZE %s" % t)
 		self.con.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
+		
+	def sr_info_for_srid(self, srid):
+		if not self.has_postgis:
+			return "Unknown"
+		
+		try:
+			c = self.con.cursor()
+			self._exec_sql(c, "SELECT srtext FROM spatial_ref_sys WHERE srid = '%d'" % srid)
+			srtext = c.fetchone()[0]
+			# try to extract just SR name (should be qouted in double quotes)
+			x = re.search('"([^"]+)"', srtext)
+			if x is not None:
+				srtext = x.group()
+			return srtext
+		except DbError, e:
+			return "Unknown"
 	
 	def insert_table_row(self, table, values, schema=None, cursor=None):
 		""" insert a row with specified values to a table.
