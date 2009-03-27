@@ -6,6 +6,7 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 import postgis_utils
+import psycopg2
 
 from types import NoneType
 
@@ -15,9 +16,14 @@ class SqlTableModel(QAbstractTableModel):
 	def __init__(self, cursor, parent=None):
 		QAbstractTableModel.__init__(self, parent)
 		
-		self.resdata = cursor.fetchall()
+		try:
+			self.resdata = cursor.fetchall()
+			self.header = map(lambda x: x[0], cursor.description)
+		except psycopg2.Error, e:
+			# nothing to fetch!
+			self.resdata = [ ]
+			self.header = [ ]
 		
-		self.header = map(lambda x: x[0], cursor.description)
 		
 		
 	def rowCount(self, parent):
