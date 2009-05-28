@@ -102,7 +102,6 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 			QApplication.restoreOverrideCursor()
 		
 		except postgis_utils.DbError, e:
-			self.db.con.rollback()
 			QApplication.restoreOverrideCursor()
 			
 			DlgDbError.showError(e, self)

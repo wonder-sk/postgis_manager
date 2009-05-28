@@ -12,7 +12,7 @@ class DlgDbError(QDialog, Ui_DlgDbError):
 		
 		self.setupUi(self)
 		
-		msg = "<pre>" + e.message.replace('<','&lt;') + "</pre>"
+		msg = "<pre>" + e.msg.replace('<','&lt;') + "</pre>"
 		query = "<pre>" + e.query.replace('<','&lt;') + "</pre>"
 		self.txtMessage.setHtml(msg)
 		self.txtQuery.setHtml(query)

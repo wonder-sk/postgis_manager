@@ -55,12 +55,20 @@ class TableIndex:
 
 
 class DbError(Exception):
-	def __init__(self, message, query=None):
+	def __init__(self, error):
 		# save error. funny that the variables are in utf8, not 
-		self.message = unicode(message, 'utf-8')
-		self.query = unicode(query, 'utf-8') if query is not None else None
+		self.msg = unicode( error.args[0], 'utf-8')
+		self.a = error.args[0]
+		if hasattr(error, "cursor") and hasattr(error.cursor, "query"):
+			self.query = unicode(error.cursor.query, 'utf-8')
+		else:
+			self.query = None
+
 	def __str__(self):
-		return "MESSAGE: %s\nQUERY: %s" % (self.message, self.query)
+		if self.query is None:
+			return self.msg.encode('utf-8')
+		return self.msg.encode('utf-8') + "\nQuery:\n" + self.query.encode('utf-8')
+		
 
 class TableField:
 	def __init__(self, name, data_type, is_null=None, default=None, modifier=None):
@@ -106,9 +114,14 @@ class GeoDB:
 		try:
 			self.con = psycopg2.connect(self.con_info())
 		except psycopg2.OperationalError, e:
-			raise DbError(e.message)
+			raise DbError(e)
 		
 		self.has_postgis = self.check_postgis()
+
+		self.check_geometry_columns_table()
+
+		# a counter to ensure that the cursor will be unique
+		self.last_cursor_id = 0
 		
 	def con_info(self):
 		con_str = ''
@@ -142,7 +155,21 @@ class GeoDB:
 		c = self.con.cursor()
 		self._exec_sql(c, "SELECT postgis_lib_version(), postgis_scripts_installed(), postgis_scripts_released(), postgis_geos_version(), postgis_proj_version(), postgis_uses_stats()")
 		return c.fetchone()
-	
+		
+	def check_geometry_columns_table(self):
+
+		c = self.con.cursor()
+		self._exec_sql(c, "SELECT relname FROM pg_class WHERE relname = 'geometry_columns' AND pg_class.relkind IN ('v', 'r')")
+		self.has_geometry_columns = (len(c.fetchall()) != 0)
+		
+		if not self.has_geometry_columns:
+			self.has_geometry_columns_access = False
+			return
+			
+		# find out whether has privileges to access geometry_columns table
+		self.has_geometry_columns_access = self.get_table_privileges('geometry_columns')[0]
+
+
 	def list_schemas(self):
 		"""
 			get list of schemas in tuples: (oid, name, owner, perms)
@@ -194,7 +221,7 @@ class GeoDB:
 		items = c.fetchall()
 		
 		# get geometry info from geometry_columns if exists
-		if self.has_postgis:
+		if self.has_postgis and self.has_geometry_columns and self.has_geometry_columns_access:
 			sql = """SELECT relname, nspname, relkind, pg_get_userbyid(relowner), reltuples, relpages,
 							geometry_columns.f_geometry_column, geometry_columns.type, geometry_columns.coord_dimension, geometry_columns.srid
 							FROM pg_class
@@ -367,7 +394,7 @@ class GeoDB:
 		self._exec_sql_and_commit(sql)
 		
 		# update geometry_columns if postgis is enabled
-		if self.has_postgis:
+		if self.has_postgis and self.has_geometry_columns and self.has_geometry_columns_access:
 			sql = "UPDATE geometry_columns SET f_table_name='%s' WHERE f_table_name='%s'" % (self._quote_str(new_table), self._quote_str(table))
 			if schema is not None:
 				sql += " AND f_table_schema='%s'" % self._quote_str(schema)
@@ -570,22 +597,36 @@ class GeoDB:
 			self._exec_sql(cursor, sql)
 		else:
 			self._exec_sql_and_commit(sql)
+			
+	def get_named_cursor(self, table=None):
+		""" return an unique named cursor, optionally including a table name """
+		self.last_cursor_id += 1
+		if table is not None:
+			table2 = table.replace(' ','_').encode('ascii','replace').replace('?','_')
+			cur_name = "cursor_%d_table_%s" % (self.last_cursor_id, table2)
+		else:
+			cur_name = "cursor_%d" % self.last_cursor_id
+		#cur_name = ("\"db_table_"+self.table+"\"").replace(' ', '_')
+		#cur_name = cur_name.encode('ascii','replace').replace('?', '_')
+		return self.con.cursor(cur_name)
 		
 	def _exec_sql(self, cursor, sql):
 		try:
 			cursor.execute(sql)
 		except psycopg2.Error, e:
-			raise DbError(e.message, e.cursor.query)
+			# do the rollback to avoid a "current transaction aborted, commands ignored" errors
+			self.con.rollback()
+			raise DbError(e)
 		
 	def _exec_sql_and_commit(self, sql):
 		""" tries to execute and commit some action, on error it rolls back the change """
-		try:
-			c = self.con.cursor()
-			self._exec_sql(c, sql)
-			self.con.commit()
-		except DbError, e:
-			self.con.rollback()
-			raise
+		#try:
+		c = self.con.cursor()
+		self._exec_sql(c, sql)
+		self.con.commit()
+		#except DbError, e:
+		#	self.con.rollback()
+		#	raise
 
 	def _quote(self, identifier):
 		""" quote identifier if needed """

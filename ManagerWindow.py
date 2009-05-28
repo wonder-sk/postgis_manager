@@ -35,6 +35,7 @@ class ManagerWindow(QMainWindow):
 		self.db = None
 		
 		self.setupUi()
+		self.enableGui(False)
 		
 		settings = QSettings()
 		self.restoreGeometry(settings.value("/PostGIS_Manager/geometry").toByteArray())
@@ -56,7 +57,7 @@ class ManagerWindow(QMainWindow):
 		
 		# connect to database selected last time
 		# but first let the manager chance to show the window
-		QTimer.singleShot(50, self.dbConnect)
+		QTimer.singleShot(50, self.dbConnectInit)
 		
 	
 	def closeEvent(self, e):
@@ -84,34 +85,50 @@ class ManagerWindow(QMainWindow):
 		
 	def dbConnectSlot(self):
 		sel = unicode(self.sender().text())
-		print "connect", sel.encode('utf-8')
+		#print "connect", sel.encode('utf-8')
 		self.dbConnect(sel)
 		
+	def dbConnectInit(self):
 
-	def dbConnect(self, selected=None):
+		if len(self.actionsDb) == 0:
+			QMessageBox.information(self, "No connections", "You apparently haven't defined any database connections yet.\nYou can do so in Quantum GIS by opening Add PostGIS layer dialog.\n\nWithout database connections you won't be able to use this plugin.")
+			return
+
+		settings = QSettings()
+		selected = unicode(settings.value("/PostgreSQL/connections/selected").toString())
+		self.dbConnect(selected)
+
+	def dbConnect(self, selected):
 		
 		settings = QSettings()
-		if selected == None:
-			selected = unicode(settings.value("/PostgreSQL/connections/selected").toString())
-		print "selected:", selected.encode('utf-8')
 		
 		# if there's open database already, get rid of it
 		if self.db:
 			self.dbDisconnect()
 		
 		# get connection details from QSettings
-		key = u"/PostgreSQL/connections/" + selected
-		get_value = lambda x: settings.value( key + "/" + x )
-		get_value_str = lambda x: unicode(get_value(x).toString())
+		settings.beginGroup( u"/PostgreSQL/connections/" + selected )
+		if not settings.contains("database"): # non-existent entry?
+			QMessageBox.critical(self, "Error", "Unable to connect: there is no defined database connection \"%s\"." % selected)
+			return
+		
+		get_value_str = lambda x: unicode(settings.value(x).toString())
 		host, database, username, password = map(get_value_str, ["host", "database", "username", "password"])
-		port = get_value("port").toInt()[0]
+		port = settings.value("port").toInt()[0]
+		if not settings.value("save").toBool():
+			(password, ok) = QInputDialog.getText(self, "Enter password", "Enter password for connection \"%s\":" % selected, QLineEdit.Password)
+			if not ok: return
+		settings.endGroup()
+		
+		self.statusBar.showMessage("Connecting to database (%s) ..." % selected)
+		QApplication.processEvents() # give the user chance to see the message :)
 		
 		# connect to DB
-		#print host,port,database,username,password
 		try:
 			self.db = postgis_utils.GeoDB(host=host, port=port, dbname=database, user=username, passwd=password)
 		except postgis_utils.DbError, e:
-			QMessageBox.critical(self, "error", "Couldn't connect to database:\n"+e.message)
+			self.statusBar.clearMessage()
+			QMessageBox.critical(self, "error", "Couldn't connect to database:\n"+e.msg)
 			return
 		
 		# set as default in QSettings
@@ -123,6 +140,10 @@ class ManagerWindow(QMainWindow):
 	
 		self.actionDbDisconnect.setEnabled(True)
 		
+		self.statusBar.showMessage("Querying database structure ...")
+		
+		self.enableGui(True)
+		
 		self.refreshTable()
 		
 		self.updateWindowTitle()
@@ -132,6 +153,7 @@ class ManagerWindow(QMainWindow):
 		
 		self.dbInfo()
 		
+		self.statusBar.clearMessage()
 	
 	def dbDisconnect(self):
 		
@@ -144,6 +166,7 @@ class ManagerWindow(QMainWindow):
 		self.refreshTable()
 		
 		self.actionDbDisconnect.setEnabled(False)
+		self.enableGui(False)
 		
 		self.loadTableMetadata(None)
 
@@ -180,6 +203,14 @@ class ManagerWindow(QMainWindow):
 				html += '<p><img src=":/icons/warning-20px.png"> &nbsp; ' \
 				        'Version of installed scripts doesn\'t match version of released scripts!<br>' \
 								'This is probably a result of incorrect PostGIS upgrade.</p>'
+			if not self.db.has_geometry_columns:
+				html += '<p><img src=":/icons/warning-20px.png"> &nbsp; ' \
+								'geometry_columns table doesn\'t exist!<br>' \
+								'This table is essential for many GIS applications for enumeration of tables.</p>'
+			if self.db.has_geometry_columns and not self.db.has_geometry_columns_access:
+				html += '<p><img src=":/icons/warning-20px.png"> &nbsp; ' \
+								'This user doesn\'t have privileges to read contents of geometry_columns table!<br>' \
+								'This table is essential for many GIS applications for enumeration of tables.</p>'
 		else:
 			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; PostGIS support not enabled!</p>'
 			
@@ -198,6 +229,7 @@ class ManagerWindow(QMainWindow):
 		self.txtMetadata.setHtml(html)
 		
 		self.unloadDbTable()
+		if self.useQgis: self.clearMapPreview()
 
 	
 	def refreshTable(self):
@@ -234,9 +266,11 @@ class ManagerWindow(QMainWindow):
 			if priv[1]: html += "<li>access objects"
 			html += "</ul></p>"
 		else:
-			html += "<p>User has no privileges :-(</p>"
+			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; This user has no privileges to access this schema!</p>'
 		self.txtMetadata.setHtml(html)
-		
+
+		if self.useQgis: self.clearMapPreview()
+
 	
 	def _field_by_number(self, num, fields):
 		""" return field specified by its number or None if doesn't exist """
@@ -261,7 +295,6 @@ class ManagerWindow(QMainWindow):
 			try:
 				item.row_count_real = self.db.get_table_rows(item.name, item.schema().name)
 			except postgis_utils.DbError, e:
-				self.db.con.rollback()
 				# possibly we don't have permission for this
 				item.row_count_real = '(unknown)'
 			
@@ -272,6 +305,17 @@ class ManagerWindow(QMainWindow):
 		html += '<tr><td>Rows (estimation):<td>%d' % item.row_count
 		html += '<tr><td>Rows (counted):<td>%s' % item.row_count_real
 		html += '<tr><td>Pages:<td>%d' % item.page_count
+		
+		# has the user access to this schema?
+		if not self.db.get_schema_privileges(item.schema().name)[1]:
+			html += "</table></div> "
+			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; This user doesn\'t have usage privileges for this schema!</p>'
+			self.txtMetadata.setHtml(html)
+			
+			self.unloadDbTable()
+			if self.useQgis: self.clearMapPreview()
+			return
+			
 		
 		# permissions
 		has_no_privileges = False
@@ -293,7 +337,7 @@ class ManagerWindow(QMainWindow):
 			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; This user has no privileges!</p>'
 		elif has_read_only:
 			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; This user has read-only privileges.</p>'
-		if item.row_count > 2 * item.row_count_real or item.row_count * 2 < item.row_count_real:
+		if item.row_count_real != '(unknown)' and (item.row_count > 2 * item.row_count_real or item.row_count * 2 < item.row_count_real):
 			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; There\'s a significant difference between estimated and real row count. ' \
 			        'Consider running VACUUM ANALYZE.'
 		html += '</div>'
@@ -389,11 +433,15 @@ class ManagerWindow(QMainWindow):
 		
 		self.txtMetadata.setHtml(html)
 		
-		self.loadDbTable(item)
+		if priv[0]: # ability to SELECT?
+			self.loadDbTable(item)
+			
+			# load also map if qgis is enabled
+			if self.useQgis: self.loadMapPreview(item)
+		else:
+			self.unloadDbTable()
+			if self.useQgis: self.clearMapPreview()
 		
-		# load also map if qgis is enabled
-		if self.useQgis:
-			self.loadMapPreview(item)
 			
 	def metadataLinkClicked(self, url):
 		print unicode(url.path()).encode('utf-8')
@@ -443,7 +491,9 @@ class ManagerWindow(QMainWindow):
 			qgis.core.QgsMapLayerRegistry.instance().removeMapLayer(self.currentLayerId, False)
 		self.currentLayerId = newLayerId
 			
-
+	def clearMapPreview(self):
+		""" remove any layers from preview canvas """
+		self.preview.setLayerSet( [] )
 
 	def createTable(self):
 		dlg = DlgCreateTable(self, self.db)
@@ -640,6 +690,10 @@ class ManagerWindow(QMainWindow):
 		dlg = DlgSqlWindow(self, self.db)
 		dlg.exec_()
 	
+	def enableGui(self, connected):
+		""" enable / disable various actions depending whether we're connected or not """
+		for a in self.dbActions:
+			a.setEnabled(connected)
 	
 	def setupUi(self):
 		
@@ -665,7 +719,7 @@ class ManagerWindow(QMainWindow):
 		self.setCentralWidget(self.tabs)
 
 		self.tree = QTreeView()
-		self.tree.setRootIsDecorated(False)
+		#self.tree.setRootIsDecorated(False)
 		self.tree.setEditTriggers( QAbstractItemView.SelectedClicked | QAbstractItemView.EditKeyPressed )
 		self.dock = QDockWidget("Database view", self)
 		self.dock.setObjectName("DbView")
@@ -694,30 +748,30 @@ class ManagerWindow(QMainWindow):
 			a.setCheckable(True)
 			self.connect(a, SIGNAL("triggered(bool)"), self.dbConnectSlot)
 		self.menuDb.addSeparator()
-		self.menuDb.addAction("Show &info", self.dbInfo)
-		self.menuDb.addAction("&SQL window", self.sqlWindow)
+		actionDbInfo = self.menuDb.addAction("Show &info", self.dbInfo)
+		actionSqlWindow = self.menuDb.addAction("&SQL window", self.sqlWindow)
 		self.menuDb.addSeparator()
 		self.actionDbDisconnect = self.menuDb.addAction("&Disconnect", self.dbDisconnect)
 		self.actionDbDisconnect.setEnabled(False)
 		
 		## MENU Schema
-		self.menuSchema.addAction("&Create schema", self.createSchema)
-		self.menuSchema.addAction("&Delete (empty) schema", self.deleteSchema)
+		actionCreateSchema = self.menuSchema.addAction("&Create schema", self.createSchema)
+		actionDeleteSchema = self.menuSchema.addAction("&Delete (empty) schema", self.deleteSchema)
 		
 		## MENU Table
 		actionCreateTable = self.menuTable.addAction(QIcon(":/icons/toolbar/action_new_table.png"), "Create &table", self.createTable)
 		self.menuTable.addSeparator()
 		actionEditTable = self.menuTable.addAction(QIcon(":/icons/toolbar/action_edit_table.png"),"&Edit table", self.editTable)
-		self.menuTable.addAction("Run VACUUM &ANALYZE", self.vacuumAnalyze)
+		actionVacuumAnalyze = self.menuTable.addAction("Run VACUUM &ANALYZE", self.vacuumAnalyze)
 		self.menuMoveToSchema = self.menuTable.addMenu("Move to &schema")
 		self.connect(self.menuMoveToSchema, SIGNAL("aboutToShow()"), self.prepareMenuMoveToSchema)
 		self.menuTable.addSeparator()
-		self.menuTable.addAction("E&mpty table", self.emptyTable)
+		actionEmptyTable = self.menuTable.addAction("E&mpty table", self.emptyTable)
 		actionDeleteTable = self.menuTable.addAction(QIcon(":/icons/toolbar/action_del_table.png"),"&Delete table/view", self.deleteTable)
 		
 		## MENU Data
-		self.menuData.addAction("&Load data from shapefile", self.loadData)
-		self.menuData.addAction("&Dump data to shapefile", self.dumpData)
+		actionLoadData = self.menuData.addAction("&Load data from shapefile", self.loadData)
+		actionDumpData = self.menuData.addAction("&Dump data to shapefile", self.dumpData)
 		actionImportData = self.menuData.addAction(QIcon(":/icons/toolbar/action_import.png"), "&Import data", self.importData)
 		actionExportData = self.menuData.addAction(QIcon(":/icons/toolbar/action_export.png"), "&Export data", self.exportData)
 		
@@ -744,3 +798,10 @@ class ManagerWindow(QMainWindow):
 		self.toolBar.addAction(actionImportData)
 		self.toolBar.addAction(actionExportData)
 		self.addToolBar(self.toolBar)
+
+		# database actions - enabled only when we're not connected
+		# (menu "move to schema" actually isn't an action... we're abusing python's duck typing :-)
+		self.dbActions = [ actionDbInfo, actionSqlWindow, actionCreateSchema, actionDeleteSchema,
+			actionCreateTable, actionEditTable, actionVacuumAnalyze, actionEmptyTable, actionDeleteTable,
+			actionLoadData, actionDumpData, actionImportData, actionExportData, self.menuMoveToSchema ]
+		

@@ -27,9 +27,7 @@ class DbTableModel(QAbstractTableModel):
 		self.col_count = len(self.fields)
 		
 		# create named cursor and run query
-		cur_name = ("\"db_table_"+self.table+"\"").replace(' ', '_')
-		cur_name = cur_name.encode('ascii','replace').replace('?', '_')
-		self.cur = self.db.con.cursor(cur_name)
+		self.cur = self.db.get_named_cursor(table)
 		self.cur.execute("SELECT %s FROM %s" % (fields_txt, self.db._table_name(self.schema, self.table)))
 		
 		self.fetched_count = 100
@@ -39,7 +37,8 @@ class DbTableModel(QAbstractTableModel):
 	def __del__(self):
 		# close cursor and save memory
 		self.cur.close()
-		
+
+
 	def fetchMoreData(self, row_start):
 		
 		#print "fetching from",row_start

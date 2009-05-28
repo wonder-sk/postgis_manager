@@ -291,7 +291,6 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 						self.db.create_spatial_index(table, schema, geomColumn, geomSrid, geomDim)
 				self.emit(SIGNAL("databaseChanged()"))
 			except postgis_utils.DbError, e:
-				self.db.con.rollback()
 				DlgDbError.showError(e, self)
 				return
 					
