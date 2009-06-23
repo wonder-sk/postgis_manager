@@ -573,7 +573,10 @@ class GeoDB:
 		try:
 			c = self.con.cursor()
 			self._exec_sql(c, "SELECT srtext FROM spatial_ref_sys WHERE srid = '%d'" % srid)
-			srtext = c.fetchone()[0]
+			sr = c.fetchone()
+			if sr is None:
+				return "Unknown"
+			srtext = sr[0]
 			# try to extract just SR name (should be qouted in double quotes)
 			x = re.search('"([^"]+)"', srtext)
 			if x is not None:
