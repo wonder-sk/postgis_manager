@@ -346,6 +346,8 @@ class ManagerWindow(QMainWindow):
 		fields = self.db.get_table_fields(item.name, item.schema().name)
 		constraints = self.db.get_table_constraints(item.name, item.schema().name)
 		indexes = self.db.get_table_indexes(item.name, item.schema().name)
+		triggers = self.db.get_table_triggers(item.name, item.schema().name)
+		rules = self.db.get_table_rules(item.name, item.schema().name)
 		
 		has_pkey = False
 		for con in constraints:
@@ -426,6 +428,30 @@ class ManagerWindow(QMainWindow):
 					keys += self._field_by_number(key, fields).name
 				html += "<tr><td>%s<td>%s" % (fld.name, keys)
 			html += "</table></div>"
+			
+		# triggers
+		if len(triggers) != 0:
+			html += '<div style=" margin-top:30px; margin-left:10px"><h2>Triggers</h2>'
+			html += '<table><tr bgcolor="#dddddd"><th width="180">Name<th width="180">Function<th>Type<th>Enabled'
+			for trig in triggers:
+				trig_type = "Before " if trig.type & postgis_utils.TableTrigger.TypeBefore else "After "
+				if trig.type & postgis_utils.TableTrigger.TypeInsert: trig_type += "INSERT "
+				if trig.type & postgis_utils.TableTrigger.TypeUpdate: trig_type += "UPDATE "
+				if trig.type & postgis_utils.TableTrigger.TypeDelete: trig_type += "DELETE "
+				if trig.type & postgis_utils.TableTrigger.TypeTruncate: trig_type += "TRUNCATE "
+				trig_type += "<br>for each "
+				trig_type += "row" if trig.type & postgis_utils.TableTrigger.TypeRow else "statement"
+				html += "<tr><td>%s<td>%s<td>%s<td>%s" % (trig.name, trig.function, trig_type, trig.enabled)
+			html += "</table></div>"
+			
+		# rules
+		if len(rules) != 0:
+			html += '<div style=" margin-top:30px; margin-left:10px"><h2>Rules</h2>'
+			html += '<table><tr bgcolor="#dddddd"><th width="180">Name<th>Definition'
+			for rule in rules:
+				html += "<tr><td>%s<td>%s" % (rule.name, rule.definition)
+			html += "</table></div>"
+		
 			
 		if item.is_view:
 			html += '<div style=" margin-top:30px; margin-left:10px"><br><h2>View definition</h2>'

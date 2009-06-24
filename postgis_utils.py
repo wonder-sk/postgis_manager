@@ -47,11 +47,31 @@ class TableConstraint:
 
 
 class TableIndex:
-	
+
 	def __init__(self, row):
 		self.name, columns = row
 		self.columns = map(int, columns.split(' '))
 
+
+class TableTrigger:
+
+	# Bits within tgtype (pg_trigger.h)
+	TypeRow      = (1 << 0) # row or statement
+	TypeBefore   = (1 << 1) # before or after
+	# events: one or more
+	TypeInsert   = (1 << 2)
+	TypeDelete   = (1 << 3)
+	TypeUpdate   = (1 << 4)
+	TypeTruncate = (1 << 5)
+
+	def __init__(self, row):
+		self.name, self.function, self.type, self.enabled = row
+
+
+class TableRule:
+
+	def __init__(self, row):
+		self.name, self.definition = row
 
 
 class DbError(Exception):
@@ -308,6 +328,40 @@ class GeoDB:
 		for row in c.fetchall():
 			constrs.append(TableConstraint(row))
 		return constrs
+
+
+	def get_table_triggers(self, table, schema=None):
+		c = self.con.cursor()
+		
+		schema_where = " AND nspname='%s' " % self._quote_str(schema) if schema is not None else ""
+		sql = """ SELECT tgname, proname, tgtype, tgenabled FROM pg_trigger trig
+		          LEFT JOIN pg_class t ON trig.tgrelid = t.oid
+							LEFT JOIN pg_proc p ON trig.tgfoid = p.oid
+							JOIN pg_namespace nsp ON t.relnamespace = nsp.oid
+							WHERE t.relname ='%s' %s """ % (self._quote_str(table), schema_where)
+	
+		self._exec_sql(c, sql)
+
+		triggers = []
+		for row in c.fetchall():
+			triggers.append(TableTrigger(row))
+		return triggers
+		
+	
+	def get_table_rules(self, table, schema=None):
+		c = self.con.cursor()
+		
+		schema_where = " AND schemaname='%s' " % self._quote_str(schema) if schema is not None else ""
+		sql = """ SELECT rulename, definition FROM pg_rules
+					WHERE tablename='%s' %s """ % (self._quote_str(table), schema_where)
+	
+		self._exec_sql(c, sql)
+
+		rules = []
+		for row in c.fetchall():
+			rules.append(TableRule(row))
+
+		return rules
 		
 	
 	def get_view_definition(self, view, schema=None):
