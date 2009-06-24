@@ -21,6 +21,7 @@ from DatabaseModel import TableItem, SchemaItem, DatabaseModel
 from DbTableModel import DbTableModel
 from DlgDbError import DlgDbError
 from WizardImport import WizardImport
+from DlgGeomProcessing import DlgGeomProcessing
 
 import resources
 import postgis_utils
@@ -642,6 +643,13 @@ class ManagerWindow(QMainWindow):
 			return
 	
 		self.refreshTable()
+		
+	def geomProcessing(self):
+		dlg = DlgGeomProcessing(self, self.db)
+		if not dlg.exec_():
+			return
+			
+		self.refreshTable()
 	
 	def exportData(self):
 		QMessageBox.information(self, "sorry", "wizard not implemented yet.")
@@ -774,6 +782,8 @@ class ManagerWindow(QMainWindow):
 		actionDumpData = self.menuData.addAction("&Dump data to shapefile", self.dumpData)
 		actionImportData = self.menuData.addAction(QIcon(":/icons/toolbar/action_import.png"), "&Import data", self.importData)
 		actionExportData = self.menuData.addAction(QIcon(":/icons/toolbar/action_export.png"), "&Export data", self.exportData)
+		self.menuData.addSeparator()
+		actionGeomProcessing = self.menuData.addAction("&Geometry processing...", self.geomProcessing)
 		
 		## MENU About
 		self.menuHelp.addAction("&About", self.about)
@@ -803,5 +813,6 @@ class ManagerWindow(QMainWindow):
 		# (menu "move to schema" actually isn't an action... we're abusing python's duck typing :-)
 		self.dbActions = [ actionDbInfo, actionSqlWindow, actionCreateSchema, actionDeleteSchema,
 			actionCreateTable, actionEditTable, actionVacuumAnalyze, actionEmptyTable, actionDeleteTable,
-			actionLoadData, actionDumpData, actionImportData, actionExportData, self.menuMoveToSchema ]
+			actionLoadData, actionDumpData, actionImportData, actionExportData, actionGeomProcessing,
+			self.menuMoveToSchema ]
 		

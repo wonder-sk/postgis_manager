@@ -32,7 +32,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		               self.chkGeomColumn, self.chkEncoding, self.radExec, self.radSave]:
 			self.connect(widget, SIGNAL("clicked()"), self.updateUi)
 			
-		self.connect(self.cboSchema, SIGNAL("clicked()"), self.populateTables)
+		self.connect(self.cboSchema, SIGNAL("currentIndexChanged(int)"), self.populateTables)
 		
 		self.populateSchemas()
 		self.populateTables()

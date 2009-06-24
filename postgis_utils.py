@@ -515,7 +515,13 @@ class GeoDB:
 			if schema is not None:
 				sql += " AND f_table_schema='%s'" % self._quote_str(schema)
 			self._exec_sql_and_commit(sql)
-	
+
+	def table_apply_function(self, schema, table, res_column, fct, param):
+		""" apply a function to a column and save the result in other column """
+		table = self._table_name(schema, table)
+		sql = "UPDATE %s SET %s = %s(%s)" % (table, res_column, fct, param)
+		self._exec_sql_and_commit(sql)
+
 	def create_index(self, table, name, column, schema=None):
 		""" create index on one column using default options """
 		table_name = self._table_name(schema, table)
@@ -605,7 +611,7 @@ class GeoDB:
 		""" return an unique named cursor, optionally including a table name """
 		self.last_cursor_id += 1
 		if table is not None:
-			table2 = table.replace(' ','_').encode('ascii','replace').replace('?','_')
+			table2 = re.sub(r'\W', '_', table.encode('ascii','replace')) # all non-alphanum characters to underscore
 			cur_name = "cursor_%d_table_%s" % (self.last_cursor_id, table2)
 		else:
 			cur_name = "cursor_%d" % self.last_cursor_id

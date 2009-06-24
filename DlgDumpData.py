@@ -23,7 +23,7 @@ class DlgDumpData(QDialog, Ui_DlgDumpData):
 		self.connect(self.btnSelectShapefile, SIGNAL("clicked()"), self.onSelectShapefile)
 		self.connect(btnDump, SIGNAL("clicked()"), self.onDump)
 
-		self.connect(self.cboSchema, SIGNAL("clicked()"), self.populateTables)
+		self.connect(self.cboSchema, SIGNAL("currentIndexChanged(int)"), self.populateTables)
 		
 		self.populateSchemas()
 		self.populateTables()
