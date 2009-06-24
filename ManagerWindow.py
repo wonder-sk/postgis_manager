@@ -29,6 +29,9 @@ import postgis_utils
 
 class ManagerWindow(QMainWindow):
 	
+	ViewDbInfo, ViewSchema, ViewTable = range(3)
+	ViewNothing = -1
+	
 	def __init__(self, use_qgis=False, parent=None):
 		QMainWindow.__init__(self, parent)
 		
@@ -47,6 +50,8 @@ class ManagerWindow(QMainWindow):
 		self.dbModel = DatabaseModel(self)
 		self.tree.setModel(self.dbModel)
 		self.currentItem = (None, None)
+		self.currentView = ManagerWindow.ViewNothing
+		self.currentHasGeometry = False
 		
 		self.tableModel = None
 		
@@ -56,6 +61,8 @@ class ManagerWindow(QMainWindow):
 		self.connect(self.tree.model(), SIGNAL("dataChanged(const QModelIndex &, const QModelIndex &)"), self.refreshTable)
 		# text metadata
 		self.connect(self.txtMetadata, SIGNAL("anchorClicked(const QUrl&)"), self.metadataLinkClicked)
+		
+		self.connect(self.tabs, SIGNAL("currentChanged(int)"), self.tabChanged)
 		
 		# connect to database selected last time
 		# but first let the manager chance to show the window
@@ -152,7 +159,6 @@ class ManagerWindow(QMainWindow):
 		
 		self.updateWindowTitle()
 		
-		self.tree.expandAll()
 		self.tree.resizeColumnToContents(0)
 		
 		self.dbInfo()
@@ -173,7 +179,8 @@ class ManagerWindow(QMainWindow):
 		self.actionDbDisconnect.setEnabled(False)
 		self.enableGui(False)
 		
-		self.loadTableMetadata(None)
+		self.currentView = ManagerWindow.ViewNothing
+		self.updateView()
 
 		self.updateWindowTitle()
 
@@ -183,21 +190,59 @@ class ManagerWindow(QMainWindow):
 			self.setWindowTitle("PostGIS Manager - %s - user %s at %s" % (self.db.dbname, self.db.user, self.db.host) )
 		else:
 			self.setWindowTitle("PostGIS Manager")
+		
+		
+	def tabChanged(self, tabIndex):
+		""" another tab has been selected: update its contents """
 
+		if tabIndex == 0 and self.dirtyMetadata:
+			# update the metadata
+			if self.currentView == ManagerWindow.ViewTable:
+				self.txtMetadata.showTableInfo(self.currentDatabaseItem())
+			elif self.currentView == ManagerWindow.ViewSchema:
+				self.txtMetadata.showSchemaInfo(self.currentDatabaseItem())
+			elif self.currentView == ManagerWindow.ViewDbInfo:
+				self.txtMetadata.showDbInfo()
+			else:
+				self.txtMetadata.setHtml('')
+			self.dirtyMetadata = False
+				
+		elif tabIndex == 1 and self.dirtyTable:
+			# update the table
+			if self.currentView == ManagerWindow.ViewTable:
+				self.loadDbTable(self.currentDatabaseItem())
+			else:
+				self.unloadDbTable()
+				
+		elif tabIndex == 2 and self.dirtyMap:
+			# update the map canvas
+			if self.currentView == ManagerWindow.ViewTable and self.currentHasGeometry and self.useQgis:
+				self.loadMapPreview(self.currentDatabaseItem())
+			else:
+				self.clearMapPreview()
+			
 
 	def dbInfo(self):
 		""" retrieve information about current server / database """
 		
-		self.txtMetadata.showDbInfo()
+		self.currentItem = (None, None)
+		self.currentView = ManagerWindow.ViewDbInfo
 		
-		self.unloadDbTable()
-		if self.useQgis: self.clearMapPreview()
+		self.updateView()
+		
 
-	
 	def refreshTable(self):
-		self.tree.model().loadFromDb(self.db)
-		self.tree.model().reset()
-		self.tree.expandAll()
+		
+		model = self.tree.model()
+		model.loadFromDb(self.db)
+		model.reset()
+		
+		# only expand when there are not too many tables
+		if model.tree.tableCount < 100:
+			self.tree.expandAll()
+		
+		self.currentItem = (None, None)
+		self.currentView = ManagerWindow.ViewNothing
 
 	def itemChanged(self, index, indexOld):
 		""" update information - current database item has been changed """
@@ -207,36 +252,39 @@ class ManagerWindow(QMainWindow):
 			if self.currentItem == (item.name, None):
 				return
 			self.currentItem = (item.name, None)
-			self.loadSchemaMetadata(item)
-			self.unloadDbTable()
+			self.currentView = ManagerWindow.ViewSchema
+			#self.loadSchemaMetadata(item)
+			#self.unloadDbTable()
 		elif isinstance(item, TableItem):
 			if self.currentItem == (item.schema().name, item.name):
 				return
 			self.currentItem = (item.schema().name, item.name)
-			self.loadTableMetadata(item)
-	
-	
-	def loadSchemaMetadata(self, item):
-		""" show metadata about schema """	
-		self.txtMetadata.showSchemaInfo(item)
-
-		if self.useQgis: self.clearMapPreview()
-
-	
-	def loadTableMetadata(self, item):
-		""" show metadata about table """
-		if not item:
-			self.txtMetadata.setHtml(QString())
-			return
-		
-		if self.txtMetadata.showTableInfo(item):
-			self.loadDbTable(item)
-			# load also map if qgis is enabled
-			if self.useQgis: self.loadMapPreview(item)
+			self.currentView = ManagerWindow.ViewTable
+			self.currentHasGeometry = (item.geom_type is not None)
+			#self.loadTableMetadata(item)
 		else:
-			self.unloadDbTable()
-			if self.useQgis: self.clearMapPreview()
-
+			self.currentItem = (None, None)
+			self.currentView = ManagerWindow.ViewNothing
+	
+		self.updateView()
+		
+		
+	def updateView(self):
+		""" set all views dirty and trigger refresh of the current one """
+		self.dirtyMetadata = True
+		self.dirtyTable = True
+		self.dirtyMap = True
+		
+		self.tabChanged( self.tabs.currentIndex() )
+		
+	def updateMetadata(self):
+		self.dirtyMetadata = True
+		self.tabChanged( self.tabs.currentIndex() )
+		
+	def updateTable(self):
+		self.dirtyTable = True
+		self.tabChanged( self.tabs.currentIndex() )
+	
 			
 	def metadataLinkClicked(self, url):
 		print unicode(url.path()).encode('utf-8')
@@ -249,18 +297,28 @@ class ManagerWindow(QMainWindow):
 			msg = "Do you want to %s all triggers?" % ("enable" if enable else "disable")
 			if QMessageBox.question(self, "Table triggers", msg, QMessageBox.Yes|QMessageBox.No) == QMessageBox.Yes:
 				try:
-					self.unloadDbTable()
+					self.unloadDbTable() # table has to be unloaded, otherwise blocks the trigger enable/disable
 					self.db.table_enable_triggers(item.name, item.schema().name, enable)
-					self.loadTableMetadata(item)
+					self.loadDbTable(item)
+					self.updateMetadata()
 				except postgis_utils.DbError, e:
 					DlgDbError.showError(e, self)
-		
+					
+		elif action == 'rows':
+			try:
+				item = self.currentDatabaseItem()
+				item.row_count_real = self.db.get_table_rows(item.name, item.schema().name)
+				self.updateMetadata()
+			except postgis_utils.DbError, e:
+				QMessageBox.information(self, "sorry", "Unable to calculate number of rows")
+			
 	
 	def unloadDbTable(self):
 		
 		self.table.setModel(None)
 		self.tableModel = None
 
+		self.dirtyTable = False
 		
 	def loadDbTable(self, item):
 		
@@ -268,11 +326,21 @@ class ManagerWindow(QMainWindow):
 		if self.table.model() and self.table.model().table == item.name and self.table.model().schema == item.schema().name:
 			return
 		
+		# if the real row count is not calculated yet, find out now!
+		if item.row_count_real == -1:
+			try:
+				item.row_count_real = self.db.get_table_rows(item.name, item.schema().name)
+				self.updateMetadata()
+			except postgis_utils.DbError, e:
+				self.unloadDbTable() # unable to load the table!
+				return
+		
 		newModel = DbTableModel(self.db, item.schema().name, item.name, item.row_count_real)
 		self.table.setModel(newModel)
 		del self.tableModel # ensure that old model gets deleted
 		self.tableModel = newModel
 
+		self.dirtyTable = False
 		
 	def loadMapPreview(self, item):
 		""" if has geometry column load to map canvas """
@@ -299,10 +367,14 @@ class ManagerWindow(QMainWindow):
 		if self.currentLayerId:
 			qgis.core.QgsMapLayerRegistry.instance().removeMapLayer(self.currentLayerId, False)
 		self.currentLayerId = newLayerId
-			
+
+		self.dirtyMap = False
+
 	def clearMapPreview(self):
 		""" remove any layers from preview canvas """
 		self.preview.setLayerSet( [] )
+
+		self.dirtyMap = False
 
 	def createTable(self):
 		dlg = DlgCreateTable(self, self.db)
@@ -324,7 +396,8 @@ class ManagerWindow(QMainWindow):
 		dlg.exec_()
 		
 		# update info
-		self.loadTableMetadata(ptr)
+		self.updateMetadata()
+		self.updateTable()
 	
 	def aboutToChangeTable(self):
 		""" table is going to be changed, we must close currently opened cursor """
@@ -334,19 +407,13 @@ class ManagerWindow(QMainWindow):
 		""" returns reference to item currently selected or displays an error """
 		
 		sel = self.tree.selectionModel()
-		indexes = sel.selectedRows()
-		if len(indexes) == 0:
+		index = sel.currentIndex()
+		if not index.isValid():
 			QMessageBox.information(self, "sorry", "nothing selected")
 			return None
-		if len(indexes) > 1:
-			QMessageBox.information(self, "sorry", "select only one item")
-			return None
-		
-		# we have exactly one selected item
-		index = indexes[0]
 		return index.internalPointer()
-	
-	
+
+
 	def emptyTable(self):
 		""" deletes all items from current table """
 		
@@ -364,7 +431,8 @@ class ManagerWindow(QMainWindow):
 		
 		try:
 			self.db.empty_table(ptr.name, ptr.schema().name)
-			self.loadTableMetadata(ptr)
+			self.updateMetadata()
+			self.updateTable()
 			QMessageBox.information(self, "good", "table has been emptied.")
 		except postgis_utils.DbError, e:
 			DlgDbError.showError(e, self)
@@ -465,15 +533,19 @@ class ManagerWindow(QMainWindow):
 	def vacuumAnalyze(self):
 		""" run VACUUM ANALYZE on this table """
 		ptr = self.currentDatabaseItem()
-		if not ptr: return
+		if not ptr:
+			return
 		if not isinstance(ptr, TableItem): #or ptr.is_view:
 			QMessageBox.information(self, "sorry", "select a TABLE for vacuum analyze")
 			return
 		
 		self.db.vacuum_analyze(ptr.name, ptr.schema().name)
 	
-		# update info
-		self.loadTableMetadata(ptr)
+		self.refreshTable() # table's metadata has been changed, fetch everything again
+
+# update info
+		self.updateMetadata()
+		
 	
 	def prepareMenuMoveToSchema(self):
 		""" populate menu with schemas """

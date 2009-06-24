@@ -6,10 +6,4 @@
 
 - check whether pgsql2shp and shp2pgsql tools exist
 
-- don't expand all if there are many tables
-
-suggestions by Jeremy Palmer:
-- don't count rows automatically - only estimated, allow user to display it on request
-- don't populate table tab unless the tab is active
-- don't render map unless its tab is active
 - allow cancel rendering with ESC

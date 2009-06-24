@@ -81,6 +81,8 @@ class DatabaseItem(TreeItem):
 			tablename, schema, reltype, relowner, row_count, page_count, geom_col, geom_type, geom_dim, geom_srid = tbl
 			is_view = (reltype == 'v')
 			tableItem = TableItem(tablename, relowner, row_count, page_count, is_view, geom_type, geom_col, geom_dim, geom_srid, schemas[schema])
+			
+		self.tableCount = len(list_tables)
 
 	
 class SchemaItem(TreeItem):
@@ -109,6 +111,7 @@ class TableItem(TreeItem):
 		TreeItem.__init__(self, parent)
 		self.name, self.owner, self.row_count, self.page_count, self.is_view = name, owner, row_count, page_count, is_view
 		self.geom_type, self.geom_column, self.geom_dim, self.geom_srid = geom_type, geom_column, geom_dim, geom_srid
+		self.row_count_real = -1 # not known (expensive to find out)
 		
 		# load (shared) icon with first instance of table item
 		if not hasattr(TableItem, 'tableIcon'):

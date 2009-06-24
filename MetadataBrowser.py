@@ -66,6 +66,10 @@ class MetadataBrowser(QTextBrowser):
 	
 	
 	def showSchemaInfo(self, item):
+		
+		if not item:
+			self.setHtml('')
+			return
 
 		html  = '<div style="background-color:#ffcccc"><h1>&nbsp;&nbsp;%s</h1></div>' % item.name
 		html += "<p> (schema)<p>Tables: %d<br>Owner: %s" % (item.childCount(), item.owner)
@@ -84,6 +88,9 @@ class MetadataBrowser(QTextBrowser):
 
 	def showTableInfo(self, item):
 
+		if not item:
+			self.setHtml('')
+			return
 		
 		if item.is_view:
 			reltype = "View"
@@ -92,19 +99,25 @@ class MetadataBrowser(QTextBrowser):
 			
 		table_name, schema_name = item.name, item.schema().name
 
-		if not hasattr(item, 'row_count_real'):
+		# if the estimation is less than 100 rows, try to count them - it shouldn't take long time
+		if item.row_count_real == -1 and item.row_count < 100:
 			try:
 				item.row_count_real = self.db.get_table_rows(table_name, schema_name)
 			except postgis_utils.DbError, e:
-				# possibly we don't have permission for this
-				item.row_count_real = '(unknown)'
+				pass
 			
 		html  = '<div style="background-color:#ccccff"><h1>&nbsp;&nbsp;%s</h1></div>' % table_name
 		html += '<div style="margin-top:30px; margin-left:10px;"> <table>'
 		html += '<tr><td width="150">Relation type:<td>%s' % reltype
 		html += '<tr><td>Owner:<td>%s' % item.owner
 		html += '<tr><td>Rows (estimation):<td>%d' % item.row_count
-		html += '<tr><td>Rows (counted):<td>%s' % item.row_count_real
+		html += '<tr><td>Rows (counted):<td>'
+		
+		if item.row_count_real != -1:
+			html += "%d" % item.row_count_real
+		else:
+			html += 'Unknown (<a href="action:rows">find out</a>)'
+			
 		html += '<tr><td>Pages:<td>%d' % item.page_count
 		
 		# has the user access to this schema?
@@ -135,7 +148,7 @@ class MetadataBrowser(QTextBrowser):
 			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; This user has no privileges!</p>'
 		elif has_read_only:
 			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; This user has read-only privileges.</p>'
-		if item.row_count_real != '(unknown)' and (item.row_count > 2 * item.row_count_real or item.row_count * 2 < item.row_count_real):
+		if item.row_count_real != -1 and (item.row_count > 2 * item.row_count_real or item.row_count * 2 < item.row_count_real):
 			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; There\'s a significant difference between estimated and real row count. ' \
 			        'Consider running VACUUM ANALYZE.'
 		html += '</div>'
