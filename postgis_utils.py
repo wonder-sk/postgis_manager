@@ -362,7 +362,17 @@ class GeoDB:
 			rules.append(TableRule(row))
 
 		return rules
+
+	def get_table_estimated_extent(self, geom, table, schema=None):
+		""" find out estimated extent (from the statistics) """
+		c = self.con.cursor()
+
+		extent = "estimated_extent('%s','%s','%s')" % (self._quote_str(schema), self._quote_str(table), self._quote_str(geom))
+		sql = """ SELECT xmin(%(ext)s), ymin(%(ext)s), xmax(%(ext)s), ymax(%(ext)s) """ % { 'ext' : extent }
+		self._exec_sql(c, sql)
 		
+		row = c.fetchone()
+		return row
 	
 	def get_view_definition(self, view, schema=None):
 		""" returns definition of the view """
@@ -574,6 +584,12 @@ class GeoDB:
 		""" apply a function to a column and save the result in other column """
 		table = self._table_name(schema, table)
 		sql = "UPDATE %s SET %s = %s(%s)" % (table, res_column, fct, param)
+		self._exec_sql_and_commit(sql)
+
+	def table_enable_triggers(self, table, schema, enable=True):
+		""" enable or disable all triggers on table """
+		table = self._table_name(schema, table)
+		sql = "ALTER TABLE %s %s TRIGGER ALL" % (table, "ENABLE" if enable else "DISABLE")
 		self._exec_sql_and_commit(sql)
 
 	def create_index(self, table, name, column, schema=None):

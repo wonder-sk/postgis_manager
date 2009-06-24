@@ -292,14 +292,16 @@ class ManagerWindow(QMainWindow):
 		else:
 			reltype = "Table"
 			
+		table_name, schema_name = item.name, item.schema().name
+
 		if not hasattr(item, 'row_count_real'):
 			try:
-				item.row_count_real = self.db.get_table_rows(item.name, item.schema().name)
+				item.row_count_real = self.db.get_table_rows(table_name, schema_name)
 			except postgis_utils.DbError, e:
 				# possibly we don't have permission for this
 				item.row_count_real = '(unknown)'
 			
-		html  = '<div style="background-color:#ccccff"><h1>&nbsp;&nbsp;%s</h1></div>' % item.name
+		html  = '<div style="background-color:#ccccff"><h1>&nbsp;&nbsp;%s</h1></div>' % table_name
 		html += '<div style="margin-top:30px; margin-left:10px;"> <table>'
 		html += '<tr><td width="150">Relation type:<td>%s' % reltype
 		html += '<tr><td>Owner:<td>%s' % item.owner
@@ -308,7 +310,7 @@ class ManagerWindow(QMainWindow):
 		html += '<tr><td>Pages:<td>%d' % item.page_count
 		
 		# has the user access to this schema?
-		if not self.db.get_schema_privileges(item.schema().name)[1]:
+		if not self.db.get_schema_privileges(schema_name)[1]:
 			html += "</table></div> "
 			html += '<p><img src=":/icons/warning-20px.png"> &nbsp; This user doesn\'t have usage privileges for this schema!</p>'
 			self.txtMetadata.setHtml(html)
@@ -322,7 +324,7 @@ class ManagerWindow(QMainWindow):
 		has_no_privileges = False
 		has_read_only = False
 		html += "<tr><td>Privileges:<td>"
-		priv = self.db.get_table_privileges(item.name, item.schema().name)
+		priv = self.db.get_table_privileges(table_name, schema_name)
 		if priv[0] or priv[1] or priv[2] or priv[3]:
 			if priv[0]: html += "select "
 			if priv[1]: html += "insert "
@@ -343,11 +345,12 @@ class ManagerWindow(QMainWindow):
 			        'Consider running VACUUM ANALYZE.'
 		html += '</div>'
 		
-		fields = self.db.get_table_fields(item.name, item.schema().name)
-		constraints = self.db.get_table_constraints(item.name, item.schema().name)
-		indexes = self.db.get_table_indexes(item.name, item.schema().name)
-		triggers = self.db.get_table_triggers(item.name, item.schema().name)
-		rules = self.db.get_table_rules(item.name, item.schema().name)
+		
+		fields = self.db.get_table_fields(table_name, schema_name)
+		constraints = self.db.get_table_constraints(table_name, schema_name)
+		indexes = self.db.get_table_indexes(table_name, schema_name)
+		triggers = self.db.get_table_triggers(table_name, schema_name)
+		rules = self.db.get_table_rules(table_name, schema_name)
 		
 		has_pkey = False
 		for con in constraints:
@@ -365,6 +368,17 @@ class ManagerWindow(QMainWindow):
 				else:
 					sr_info = "Undefined"
 				html += '<tr><td>Dimension:<td>%d<tr><td>Spatial ref:<td>%s (%d)' % (item.geom_dim, sr_info, item.geom_srid)
+			# estimated extent
+			html += '<tr><td>Extent:<td>'
+			try:
+				extent = self.db.get_table_estimated_extent(item.geom_column, table_name, schema_name)
+				if extent[0] is not None:
+					html += '%.5f, %.5f - %.5f, %.5f' % extent
+				else:
+					html += '(unknown)'
+			except postgis_utils.DbError, e:
+				DlgDbError.showError(e, self)
+				html += '(unknown)'
 			html += '</table>'
 			if item.geom_type == 'geometry':
 				html += '<p><img src=":/icons/warning-20px.png"> &nbsp; There isn\'t entry in geometry_columns!</p>'
@@ -442,7 +456,9 @@ class ManagerWindow(QMainWindow):
 				trig_type += "<br>for each "
 				trig_type += "row" if trig.type & postgis_utils.TableTrigger.TypeRow else "statement"
 				html += "<tr><td>%s<td>%s<td>%s<td>%s" % (trig.name, trig.function, trig_type, trig.enabled)
-			html += "</table></div>"
+			html += "</table>"
+			html += "<a href=\"action:triggers/enable\">Enable all triggers</a> / <a href=\"action:triggers/disable\">Disable all triggers</a>"
+			html += "</div>"
 			
 		# rules
 		if len(rules) != 0:
@@ -455,7 +471,7 @@ class ManagerWindow(QMainWindow):
 			
 		if item.is_view:
 			html += '<div style=" margin-top:30px; margin-left:10px"><br><h2>View definition</h2>'
-			html += '<p>%s</p>' % self.db.get_view_definition(item.name, item.schema().name)
+			html += '<p>%s</p>' % self.db.get_view_definition(table_name, schema_name)
 			html += '</div>'
 		
 		self.txtMetadata.setHtml(html)
@@ -472,6 +488,20 @@ class ManagerWindow(QMainWindow):
 			
 	def metadataLinkClicked(self, url):
 		print unicode(url.path()).encode('utf-8')
+		
+		action = unicode(url.path())
+
+		if action == 'triggers/enable' or action == 'triggers/disable':
+			enable = (action == 'triggers/enable')
+			item = self.currentDatabaseItem()
+			msg = "Do you want to %s all triggers?" % ("enable" if enable else "disable")
+			if QMessageBox.question(self, "Table triggers", msg, QMessageBox.Yes|QMessageBox.No) == QMessageBox.Yes:
+				try:
+					self.unloadDbTable()
+					self.db.table_enable_triggers(item.name, item.schema().name, enable)
+					self.loadTableMetadata(item)
+				except postgis_utils.DbError, e:
+					DlgDbError.showError(e, self)
 		
 	
 	def unloadDbTable(self):

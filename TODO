@@ -13,4 +13,3 @@ suggestions by Jeremy Palmer:
 - don't populate table tab unless the tab is active
 - don't render map unless its tab is active
 - allow cancel rendering with ESC
-- show layer extents (use estimated_extent())
