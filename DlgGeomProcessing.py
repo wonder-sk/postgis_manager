@@ -5,6 +5,9 @@ from DlgDbError import DlgDbError
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+import postgis_utils
+
+
 class DlgGeomProcessing(QDialog, Ui_DlgGeomProcessing):
 	def __init__(self, parent=None, db=None):
 		QDialog.__init__(self, parent)
@@ -75,14 +78,18 @@ class DlgGeomProcessing(QDialog, Ui_DlgGeomProcessing):
 		else:
 			QMessageBox.information(self, "error", "No function selected!")
 			return
+			
+		addTrigger = self.chkUpdateTrigger.isChecked()
 
 		QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
 		
 		try:
-			self.db.table_apply_function( unicode(self.cboSchema.currentText()),
-																		unicode(self.cboTable.currentText()),
-																		unicode(self.cboResColumn.currentText()),
-																		fct, unicode(self.cboGeomColumn.currentText()) )
+			schema, table = unicode(self.cboSchema.currentText()), unicode(self.cboTable.currentText())
+			resColumn, geomColumn = unicode(self.cboResColumn.currentText()),unicode(self.cboGeomColumn.currentText())
+			self.db.table_apply_function( schema, table, resColumn, fct, geomColumn )
+																		
+			if addTrigger:
+				self.db.table_add_function_trigger( schema, table, resColumn, fct, geomColumn )
 		
 			QApplication.restoreOverrideCursor()
 		

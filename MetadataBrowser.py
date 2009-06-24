@@ -262,7 +262,11 @@ class MetadataBrowser(QTextBrowser):
 				if trig.type & postgis_utils.TableTrigger.TypeTruncate: trig_type += "TRUNCATE "
 				trig_type += "<br>for each "
 				trig_type += "row" if trig.type & postgis_utils.TableTrigger.TypeRow else "statement"
-				html += "<tr><td>%s<td>%s<td>%s<td>%s" % (trig.name, trig.function, trig_type, trig.enabled)
+				if trig.enabled:
+					txt_enabled = 'Yes (<a href="action:trigger/%s/disable">disable</a>)' % trig.name
+				else:
+					txt_enabled = 'No (<a href="action:trigger/%s/enable">enable</a>)' % trig.name
+				html += '<tr><td>%s (<a href="action:trigger/%s/delete">delete</a>)<td>%s<td>%s<td>%s' % (trig.name, trig.name, trig.function, trig_type, txt_enabled)
 			html += "</table>"
 			html += "<a href=\"action:triggers/enable\">Enable all triggers</a> / <a href=\"action:triggers/disable\">Disable all triggers</a>"
 			html += "</div>"
@@ -272,7 +276,7 @@ class MetadataBrowser(QTextBrowser):
 			html += '<div style=" margin-top:30px; margin-left:10px"><h2>Rules</h2>'
 			html += '<table><tr bgcolor="#dddddd"><th width="180">Name<th>Definition'
 			for rule in rules:
-				html += "<tr><td>%s<td>%s" % (rule.name, rule.definition)
+				html += '<tr><td>%s (<a href="action:rule/%s/delete">delete</a>)<td>%s' % (rule.name, rule.name, rule.definition)
 			html += "</table></div>"
 		
 			

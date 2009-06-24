@@ -585,11 +585,29 @@ class GeoDB:
 		table = self._table_name(schema, table)
 		sql = "UPDATE %s SET %s = %s(%s)" % (table, res_column, fct, param)
 		self._exec_sql_and_commit(sql)
-
+		
 	def table_enable_triggers(self, table, schema, enable=True):
 		""" enable or disable all triggers on table """
 		table = self._table_name(schema, table)
 		sql = "ALTER TABLE %s %s TRIGGER ALL" % (table, "ENABLE" if enable else "DISABLE")
+		self._exec_sql_and_commit(sql)
+		
+	def table_enable_trigger(self, table, schema, trigger, enable=True):
+		""" enable or disable one trigger on table """
+		table = self._table_name(schema, table)
+		sql = "ALTER TABLE %s %s TRIGGER %s" % (table, "ENABLE" if enable else "DISABLE", self._quote(trigger))
+		self._exec_sql_and_commit(sql)
+		
+	def table_delete_trigger(self, table, schema, trigger):
+		""" delete trigger on table """
+		table = self._table_name(schema, table)
+		sql = "DROP TRIGGER %s ON %s" % (self._quote(trigger), table)
+		self._exec_sql_and_commit(sql)
+
+	def table_delete_rule(self, table, schema, rule):
+		""" delete rule on table """
+		table = self._table_name(schema, table)
+		sql = "DROP RULE %s ON %s" % (self._quote(rule), table)
 		self._exec_sql_and_commit(sql)
 
 	def create_index(self, table, name, column, schema=None):
@@ -676,7 +694,39 @@ class GeoDB:
 			self._exec_sql(cursor, sql)
 		else:
 			self._exec_sql_and_commit(sql)
-			
+
+
+	def table_add_function_trigger(self, schema, table, resColumn, fct, geomColumn):
+		""" add a trigger on insert and update that recalculates the value from geometry column """
+		
+		trig_f_name = "%s_calc_%s" % (table, fct)
+		trig_name = "calc_%s" % fct
+		ctx = { 'fname' : trig_f_name, 'tname' : trig_name,
+		        'res' : resColumn, 'geom' : geomColumn,
+						'f' : fct, 'table' : self._table_name(schema, table) }
+		sql = """
+			CREATE OR REPLACE FUNCTION %(fname)s() RETURNS TRIGGER AS
+			$$
+			BEGIN
+				IF (TG_OP = 'INSERT') THEN
+					NEW.%(res)s := %(f)s(NEW.%(geom)s);
+				ELSIF (TG_OP = 'UPDATE') THEN
+					IF NEW.%(geom)s != OLD.%(geom)s THEN
+						NEW.%(res)s := %(f)s(NEW.%(geom)s);
+					END IF;
+				END IF;
+			RETURN NEW;
+			END;
+			$$
+			LANGUAGE 'plpgsql';
+
+			CREATE TRIGGER %(tname)s BEFORE INSERT OR UPDATE ON %(table)s FOR EACH ROW
+			EXECUTE PROCEDURE %(fname)s();
+		""" % ctx
+		
+		self._exec_sql_and_commit(sql)
+
+
 	def get_named_cursor(self, table=None):
 		""" return an unique named cursor, optionally including a table name """
 		self.last_cursor_id += 1

@@ -164,11 +164,8 @@
    </item>
    <item row="4" column="1">
     <widget class="QCheckBox" name="chkUpdateTrigger">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
      <property name="text">
-      <string>Add a trigger to calculate the value on update</string>
+      <string>Add a trigger for calculation on insert and update</string>
      </property>
     </widget>
    </item>

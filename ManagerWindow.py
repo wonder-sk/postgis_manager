@@ -304,6 +304,49 @@ class ManagerWindow(QMainWindow):
 				except postgis_utils.DbError, e:
 					DlgDbError.showError(e, self)
 					
+		elif action[0:8] == 'trigger/':
+			item = self.currentDatabaseItem()
+			parts = action.split('/')
+			trigger_name = parts[1]
+			trigger_action = parts[2]
+			if trigger_action == 'enable' or trigger_action == 'disable':
+				enable = (trigger_action == 'enable')
+				msg = "Do you want to %s trigger %s?" % ("enable" if enable else "disable", trigger_name)
+				if QMessageBox.question(self, "Table trigger", msg, QMessageBox.Yes|QMessageBox.No) == QMessageBox.Yes:
+					try:
+						self.unloadDbTable() # table has to be unloaded, otherwise blocks the trigger enable/disable
+						self.db.table_enable_trigger(item.name, item.schema().name, trigger_name, enable)
+						self.loadDbTable(item)
+						self.updateMetadata()
+					except postgis_utils.DbError, e:
+						DlgDbError.showError(e, self)
+			elif trigger_action == 'delete':
+				msg = "Do you want to delete trigger %s?" % trigger_name
+				if QMessageBox.question(self, "Table trigger", msg, QMessageBox.Yes|QMessageBox.No) == QMessageBox.Yes:
+					try:
+						self.unloadDbTable() # table has to be unloaded, otherwise blocks the trigger
+						self.db.table_delete_trigger(item.name, item.schema().name, trigger_name)
+						self.loadDbTable(item)
+						self.updateMetadata()
+					except postgis_utils.DbError, e:
+						DlgDbError.showError(e, self)
+
+		elif action[0:5] == 'rule/':
+			item = self.currentDatabaseItem()
+			parts = action.split('/')
+			rule_name = parts[1]
+			rule_action = parts[2]
+			if rule_action == 'delete':
+				msg = "Do you want to delete rule %s?" % rule_name
+				if QMessageBox.question(self, "Table rule", msg, QMessageBox.Yes|QMessageBox.No) == QMessageBox.Yes:
+					try:
+						self.unloadDbTable() # table has to be unloaded
+						self.db.table_delete_rule(item.name, item.schema().name, rule_name)
+						self.loadDbTable(item)
+						self.updateMetadata()
+					except postgis_utils.DbError, e:
+						DlgDbError.showError(e, self)
+					
 		elif action == 'rows':
 			try:
 				item = self.currentDatabaseItem()
