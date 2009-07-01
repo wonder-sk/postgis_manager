@@ -117,6 +117,10 @@ class TableItem(TreeItem):
 		if not hasattr(TableItem, 'tableIcon'):
 			TableItem.tableIcon = QIcon(":/icons/table.xpm")
 			TableItem.viewIcon = QIcon(":/icons/view.xpm")
+			TableItem.layerPointIcon = QIcon(":/icons/layer_point.png")
+			TableItem.layerLineIcon = QIcon(":/icons/layer_line.png")
+			TableItem.layerPolygonIcon = QIcon(":/icons/layer_polygon.png")
+			TableItem.layerUnknownIcon = QIcon(":/icons/layer_unknown.png")
 			
 	def schema(self):
 		return self.parent()
@@ -130,6 +134,15 @@ class TableItem(TreeItem):
 			return None
 		
 	def icon(self):
+		if self.geom_type is not None:
+			if self.geom_type.find('POINT') != -1:
+				return self.layerPointIcon
+			elif self.geom_type.find('LINESTRING') != -1:
+				return self.layerLineIcon
+			elif self.geom_type.find('POLYGON') != -1:
+				return self.layerPolygonIcon
+			else:
+				return self.layerUnknownIcon
 		if self.is_view:
 			return self.viewIcon
 		else:
@@ -151,7 +164,7 @@ class DatabaseModel(QAbstractItemModel):
 	
 	def __init__(self, parent=None):
 		QAbstractItemModel.__init__(self, parent)
-		self.header = ['Table', 'Geometry']
+		self.header = ['Table']
 		
 		self.tree = DatabaseItem()
 		
@@ -162,7 +175,7 @@ class DatabaseModel(QAbstractItemModel):
 
 		
 	def columnCount(self, parent):
-		return 2
+		return 1
 		
 	def data(self, index, role):
 		if not index.isValid():
