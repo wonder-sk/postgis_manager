@@ -1,0 +1,128 @@
+<html>
+<title>PostGIS Manager</title>
+
+<body>
+<div style="width: 900px">
+
+<h1>PostGIS Manager</h1>
+
+<h2>Intro</h2>
+
+PostGIS Manager is a plugin for Quantum GIS that aims to be a simple yet powerful tool for management of PostgreSQL databases
+with emphasis on support of spatially enabled tables in PostGIS. Target audience for this plugin are users that want to
+do some administration tasks on the tables in user-friendly graphical interface without having to type SQL commands.
+This plugin is not meant to be a complex tool supporting virtually all PostgreSQL/PostGIS functionality. Instead,
+it should help users with typical tasks and speed up the work.
+<p>
+We hope that PostGIS Manager will help to lower the burden when it comes to usage of geodatabases which are for many
+considered as an interesting but too complex concept to use for real work.
+<p>
+The user should have some basic knowledge about relational databases and their usage. For the simplest use for only
+viewing database structure and contents of tables, it's necessary to understand what the databases and tables.
+Before doing any modifications, it's highly recommended to understand the views, schemas, indexes, constraints, SQL syntax,
+triggers and rules. Otherwise one can do some serious harm to the data stored in the database.
+<p>
+<img src="main_window.png" alt="Main window">
+<p>
+Main window consists basically of two parts:
+<ul>
+<li><b>database view</b> - this is a widget that lists all tables and views in the database
+<li><b>central view</b> - displays metadata, tabular preview or map preview
+</ul>
+
+<h2>Short intro to PostGIS</h2>
+
+If you're familiar with PostGIS, feel free to skip this section.
+<p>
+PostGIS is an extension for PostgreSQL database that adds support for spatial data. Much of the objects we
+recognize in the world have some location: a restaurant can be defined by a point, a road can be described
+as a line with several segments and border of a forest can be represented as a polygon. This means that
+we can extend our tables (containing restaurants, roads, forests or anything else) with another column
+which will specify object's location. PostGIS implements adds a new <tt>geometry</tt> type that stores
+the spatial information. Once such table contains such column, be call it spatial table or geotable.
+<p>
+There are many reasons why one would want to add spatial information to objects. It's possible to select
+data by specifying a location (all restaurants along some road). TODO
+<p>
+When working with a large set of data (think millions of rows), it's necessary to access the data effectively.
+Relational databases use indexes on columns to achieve better performance of queries. Traditional indexes
+however can't be used for the spatial data because they're two (or even more) dimensional. PostGIS comes
+with a spatial index (R-tree, as opposed to B-tree used for traditional indexes).
+<p>
+TODO:
+1 table = 1 layer
+
+<h2>Database view</h2>
+
+This widget displays database content in a hierarchy. Top-level items are always schemas (i.e. namespaces),
+their children are both tables and views. 
+<p>
+You can find following icons that differentiate the items in the view:
+<p>
+<img src="../icons/namespace.png" alt="schema"> Schema<br>
+<img src="../icons/table.png" alt="table"> Table<br>
+<img src="../icons/view.png" alt="view"> View<br>
+<p>
+If the database has PostGIS support, the plugin will detect which
+geometry type is used for the table (points, lines or polygons) and set appropriate icon (instead of the original table/view icon):
+<p>
+<img src="../icons/layer_point.png" alt="point" width="16" height="16"> Point layer<br>
+<img src="../icons/layer_line.png" alt="line" width="16" height="16"> Line layer<br>
+<img src="../icons/layer_polygon.png" alt="polygon"  width="16" height="16"> Polygon layer<br>
+<img src="../icons/layer_unknown.png" alt="unknown"> Unknown layer type<br>
+<p>
+Unknown layer type means that the geometry column is either not listed in <tt>geometry_columns</tt> or some special type is used.
+<p>
+Tables that contain more geometry columns are listed multiple times, each time for one geometry column. This is however not
+very common.
+<p>
+Schemas can be expanded and collapsed, by default all schemas are expanded if the database contains less than 100 tables or views.
+<p>
+Note: by default, there is a <tt>public</tt> schema in every database and is used implicitly. This means that
+tables in public schema can be accessed just by their name and not necessarily with <tt>schema.table</tt> syntax.
+
+<h2>Central view</h2>
+
+The central part consists of three tabs for inspection of the table metadata and their contents:
+<ul>
+<li><b>Metadata tab</b> displays basic information about the table: row count, privileges, owner, detailed list of fields (columns),
+constraints (primary and foreign keys, unique columns, checks), list of indexes, triggers and rules. For spatial tables
+it adds a section about geometry type, dimension, spatial reference and extent. TODO
+<li><b>Table tab</b> shows contents of the table in typical tabular form. Geometry columns are excluded from the view. The table is read-only.
+<li><b>Preview tab</b> is available only for spatial tables and displays a simple map from the table contents.
+</ul>
+
+<h2>Database connections</h2>
+
+TODO
+
+<h2>Database info</h2>
+
+When the user selects menu Database -&gt; Show info, the metadata tab is filled with information about the database connection:
+host computer name, current user (role), user's privileges and server version. If the PostGIS support is installed for
+the database, it will also show information about version of PostGIS and its support libraries.
+
+<h2>Management of schemas</h2>
+
+TODO
+
+<h2>Management of tables</h2>
+
+TODO
+
+<h2>Data import</h2>
+
+TODO
+
+<h2>Data export</h2>
+
+TODO
+
+<h2>Advanced features</h2>
+
+TODO: Geometry processing, versioning.
+
+</div>
+</body>
+
+</html>
