@@ -54,6 +54,8 @@ class DatabaseItem(TreeItem):
 	def constructTreeFromDb(self, db):
 		""" creates a tree of schemas and tables from current DB connection """
 		
+		self.tableCount = 0
+		
 		if not db:
 			return
 		

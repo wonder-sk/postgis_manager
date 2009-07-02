@@ -23,6 +23,7 @@ from DlgDbError import DlgDbError
 from WizardImport import WizardImport
 from DlgGeomProcessing import DlgGeomProcessing
 from MetadataBrowser import MetadataBrowser
+from DlgVersioning import DlgVersioning
 
 import resources
 import postgis_utils
@@ -611,6 +612,13 @@ class ManagerWindow(QMainWindow):
 		
 		self.refreshTable()
 		
+	def tableVersioning(self):
+		dlg = DlgVersioning(self, self.db)
+		if not dlg.exec_():
+			return
+			
+		self.refreshTable()
+		
 	def about(self):
 		""" show about box """
 		dlg = DlgAbout(self)
@@ -707,6 +715,7 @@ class ManagerWindow(QMainWindow):
 		actionExportData = self.menuData.addAction(QIcon(":/icons/toolbar/action_export.png"), "&Export data", self.exportData)
 		self.menuData.addSeparator()
 		actionGeomProcessing = self.menuData.addAction("&Geometry processing...", self.geomProcessing)
+		actionVersioning = self.menuData.addAction("Table &versioning...", self.tableVersioning)
 		
 		## MENU About
 		self.menuHelp.addAction("&About", self.about)
@@ -737,5 +746,5 @@ class ManagerWindow(QMainWindow):
 		self.dbActions = [ actionDbInfo, actionSqlWindow, actionCreateSchema, actionDeleteSchema,
 			actionCreateTable, actionEditTable, actionVacuumAnalyze, actionEmptyTable, actionDeleteTable,
 			actionLoadData, actionDumpData, actionImportData, actionExportData, actionGeomProcessing,
-			self.menuMoveToSchema ]
+			actionVersioning, self.menuMoveToSchema ]
 		
