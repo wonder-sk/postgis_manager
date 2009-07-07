@@ -166,8 +166,10 @@ CREATE OR REPLACE FUNCTION %(schema)s.%(table)s_insert()
 RETURNS trigger AS
 $$
 BEGIN
-  NEW.%(start)s = now();
-  NEW.%(end)s = null;
+  if NEW.%(start)s IS NULL then
+    NEW.%(start)s = now();
+    NEW.%(end)s = null;
+  end if;
   RETURN NEW;
 END;
 $$

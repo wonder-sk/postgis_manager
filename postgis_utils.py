@@ -448,7 +448,7 @@ class GeoDB:
 	def empty_table(self, table, schema=None):
 		""" delete all rows from table """
 		table_name = self._table_name(schema, table)
-		sql = "DELETE FROM %s" % table_name
+		sql = "TRUNCATE %s" % table_name
 		self._exec_sql_and_commit(sql)
 		
 	def rename_table(self, table, new_table, schema=None):

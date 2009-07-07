@@ -95,7 +95,7 @@ class SchemaItem(TreeItem):
 		
 		# load (shared) icon with first instance of schema item
 		if not hasattr(SchemaItem, 'schemaIcon'):
-			SchemaItem.schemaIcon = QIcon(":/icons/namespace.xpm")
+			SchemaItem.schemaIcon = QIcon(":/icons/namespace.png")
 	
 	def data(self, column):
 		if column == 0:
@@ -117,8 +117,8 @@ class TableItem(TreeItem):
 		
 		# load (shared) icon with first instance of table item
 		if not hasattr(TableItem, 'tableIcon'):
-			TableItem.tableIcon = QIcon(":/icons/table.xpm")
-			TableItem.viewIcon = QIcon(":/icons/view.xpm")
+			TableItem.tableIcon = QIcon(":/icons/table.png")
+			TableItem.viewIcon = QIcon(":/icons/view.png")
 			TableItem.layerPointIcon = QIcon(":/icons/layer_point.png")
 			TableItem.layerLineIcon = QIcon(":/icons/layer_line.png")
 			TableItem.layerPolygonIcon = QIcon(":/icons/layer_polygon.png")

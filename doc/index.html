@@ -120,7 +120,55 @@ TODO
 
 <h2>Advanced features</h2>
 
-TODO: Geometry processing, versioning.
+<h3>Geometry processing</h3>
+
+In many case you may want to do some analyses with your spatial tables. Often it's useful to know
+the area of every polygon or length of every linestring in a spatial table. Just imagine situation where
+you would like to see polygons symbolized depending on their size. Or as a part of cleaning process you
+want to delete some of the smallest polygons. In these cases it's handy to have the area or length value
+precalculated in a separate attribute. Of course it's possible to let PostgreSQL calculate the values
+on the fly (e.g. using a view with such calculated column), but that leads to performance penalties
+on retrieval of data.
+<p>
+Geometry processing dialog greatly simplifies the task of calculation of features' area or length.
+You just select the table and appropriate geometry column (usually there's just one per table) and 
+the attribute which will receive the calculated values.
+<p>
+If data in your table are being added or modified, the calculated values become soon invalid. But don't worry.
+There's a check box "Add a trigger for calculation on insert and update". If checked, the dialog
+not only calculates the values (one-time action) but it also creates a trigger function that does the calculation and
+assigns it to the table. On each modification of the table trigger function updates the area/length attribute
+to make sure the value is correct. 
+<p>
+Note: both area and length are calculated in the units of layer's projection. If the layer has meters
+as map units, the resulting length is in meters and area in square meters. When using lat/lon coordinates,
+the map unit is one degree and the resulting length (in degrees) and area (in square degrees) doesn't have much use (IMHO).
+
+<h3>Table versioning</h3>
+
+<b>This is currently an experimental feature.</b>
+<p>
+Having table with versioning means that you can go back to any moment in the history of the table and see
+its state. This is achieved by only appending changes to the table instead of doing modifications in place.
+Every record has additional start and end time attribute. In case the record is still actual, its end time
+is null. The write operations on the table are modified as follows:
+<ul>
+ <li>INSERT - start time is set to current time, end time is set to null
+ <li>UPDATE - original record gets its end time set to current time, new record is inserted to the table
+containing the new version of the record
+ <li>DELETE - end time of the record is set to the current time.
+</ul>
+To get actual view of the table, you must set a condition that end time is null, otherwise you would fetch
+contents of the table in the whole history. It's common to use a convenience ("current") view that has
+this constraint included in the definition.
+<p>
+It's recommended to read
+<a href="http://www.varlena.com/GeneralBits/Tidbits/tt.pdf">TimeTravelling in PostgreSQL</a> [PDF] presentation
+as the table versioning feature is heavily based on it. Another good source of information (for those understanding German) is
+<a href="http://gis.hsr.ch/wiki/images/4/44/Postgis_historisierung.pdf">Historisierung von Tabellen in PostGIS</a> [PDF]
+which discusses the topic more in context of GIS application and gives examples of the implementation.
+<p>
+TODO
 
 </div>
 </body>

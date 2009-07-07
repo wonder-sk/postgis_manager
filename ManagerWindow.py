@@ -3,6 +3,7 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 import sys
+import os.path
 
 try:
 	import qgis.gui
@@ -469,7 +470,7 @@ class ManagerWindow(QMainWindow):
 			QMessageBox.information(self, "sorry", "select a TABLE to empty it")
 			return
 		
-		res = QMessageBox.question(self, "hey!", "really delete all items frm table %s ?" % ptr.name, QMessageBox.Yes | QMessageBox.No)
+		res = QMessageBox.question(self, "hey!", "really delete all items from table %s ?" % ptr.name, QMessageBox.Yes | QMessageBox.No)
 		if res != QMessageBox.Yes:
 			return
 		
@@ -623,6 +624,11 @@ class ManagerWindow(QMainWindow):
 		""" show about box """
 		dlg = DlgAbout(self)
 		dlg.exec_()
+        
+	def help(self):
+		""" open help in a browser """
+		docFile = os.path.join(os.path.dirname(__file__), "doc","index.html")
+		QDesktopServices.openUrl( QUrl("file:" + docFile) )
 		
 	def sqlWindow(self):
 		""" show sql window """
@@ -719,6 +725,7 @@ class ManagerWindow(QMainWindow):
 		
 		## MENU About
 		self.menuHelp.addAction("&About", self.about)
+		self.menuHelp.addAction("&Help", self.help, QKeySequence("F1"))
 		
 		## menu bar
 		self.menuBar = QMenuBar(self)

@@ -7,3 +7,7 @@
 - check whether pgsql2shp and shp2pgsql tools exist
 
 - allow cancel rendering with ESC
+
+- toolbar buttons: refresh, sql window
+
+- versioning: indexes, optionally store last user

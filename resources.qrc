@@ -1,8 +1,8 @@
 <RCC>
     <qresource >
-        <file>icons/table.xpm</file>
-        <file>icons/namespace.xpm</file>
-        <file>icons/view.xpm</file>
+        <file>icons/table.png</file>
+        <file>icons/namespace.png</file>
+        <file>icons/view.png</file>
 				<file>icons/postgis_elephant.png</file>
 				<file>icons/warning-20px.png</file>
 				

@@ -19,7 +19,7 @@
      <item>
       <widget class="QLabel" name="label_4">
        <property name="text">
-        <string>Table is expected to be empty, without primary key.</string>
+        <string>Table is expected to be empty, with a primary key.</string>
        </property>
       </widget>
      </item>
