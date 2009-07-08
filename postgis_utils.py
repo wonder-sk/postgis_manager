@@ -120,7 +120,7 @@ class GeoDB:
 	def __init__(self, host=None, port=None, dbname=None, user=None, passwd=None):
 		
 		# regular expression for identifiers without need to quote them
-		self.re_ident_ok = re.compile(r"^[a-zA-Z]\w+$")
+		self.re_ident_ok = re.compile(r"^[a-z][a-z0-9_]+$")
 		
 		self.host = host
 		self.port = port

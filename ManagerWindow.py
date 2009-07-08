@@ -654,6 +654,13 @@ class ManagerWindow(QMainWindow):
 		if self.useQgis:
 			self.preview = qgis.gui.QgsMapCanvas(self)
 			self.preview.setCanvasColor(QColor(255,255,255))
+			# reuse settings from QGIS
+			settings = QSettings()
+			self.preview.enableAntiAliasing( settings.value( "/qgis/enable_anti_aliasing", QVariant(False) ).toBool() )
+			self.preview.useImageToRender( settings.value( "/qgis/use_qimage_to_render", QVariant(False) ).toBool() )
+			action = settings.value( "/qgis/wheel_action", QVariant(0) ).toInt()[0]
+			zoomFactor = settings.value( "/qgis/zoom_factor", QVariant(2) ).toDouble()[0]
+			self.preview.setWheelAction( qgis.gui.QgsMapCanvas.WheelAction(action), zoomFactor )
 		
 		self.tabs = QTabWidget()
 		self.tabs.addTab(self.txtMetadata, "Metadata")

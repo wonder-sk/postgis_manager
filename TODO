@@ -11,3 +11,6 @@
 - toolbar buttons: refresh, sql window
 
 - versioning: indexes, optionally store last user
+
+- load layer into qgis
+
