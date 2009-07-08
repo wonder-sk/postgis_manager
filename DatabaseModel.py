@@ -66,9 +66,10 @@ class DatabaseItem(TreeItem):
 			return
 		
 		schemas = {} # name : item
+		schema_cmp = lambda x,y: -1 if x[1] < y[1] else 1
 		
 		# add all schemas
-		for schema in list_schemas:
+		for schema in sorted(list_schemas, cmp=schema_cmp):
 			schema_oid, schema_name, schema_owner, schema_perms = schema
 			schemas[schema_name] = SchemaItem(schema_name, schema_owner, self)
 			

@@ -234,7 +234,7 @@ class MetadataBrowser(QTextBrowser):
 				keys = ""
 				for key in con.keys:
 					if len(keys) != 0: keys += "<br>"
-					keys += self._field_by_number(key, fields).name
+					keys += self._field_name_by_number(key, fields)
 				html += "<tr><td>%s<td>%s<td>%s" % (con.name, con_type, keys)
 			html += "</table></div>"
 		
@@ -246,7 +246,7 @@ class MetadataBrowser(QTextBrowser):
 				keys = ""
 				for key in fld.columns:
 					if len(keys) != 0: keys += "<br>"
-					keys += self._field_by_number(key, fields).name
+					keys += self._field_name_by_number(key, fields)
 				html += "<tr><td>%s<td>%s" % (fld.name, keys)
 			html += "</table></div>"
 			
@@ -293,11 +293,11 @@ class MetadataBrowser(QTextBrowser):
 			return False
 
 
-	def _field_by_number(self, num, fields):
+	def _field_name_by_number(self, num, fields):
 		""" return field specified by its number or None if doesn't exist """
 		for fld in fields:
 			if fld.num == num:
-				return fld
-		return None
+				return fld.name
+		return "??? (#%d)" % num
 		
 		
