@@ -22,7 +22,11 @@ viewing database structure and contents of tables, it's necessary to understand 
 Before doing any modifications, it's highly recommended to understand the views, schemas, indexes, constraints, SQL syntax,
 triggers and rules. Otherwise one can do some serious harm to the data stored in the database.
 <p>
-<img src="main_window.png" alt="Main window">
+<div style="margin:10px">
+<img src="main_window.png" alt="Main window" style="margin-bottom:5px">
+<br>
+<i>Main window of PostGIS Manager</i>
+</div>
 <p>
 Main window consists basically of two parts:
 <ul>
@@ -94,27 +98,107 @@ it adds a section about geometry type, dimension, spatial reference and extent. 
 
 <h2>Database connections</h2>
 
-TODO
+In Database menu there's a list of available database connections. The list is loaded from QGIS settings and if you'd like
+to add, modify or delete any connections, you can do it within Quantum GIS, menu Layer &raquo; Add PostGIS Layer.
+Once connected, you can disconnect from the database (menu Database &raquo; Disconnect) or reconnect to a different database.
+<p>
+When started, PostGIS Manager tries to connect to the recently used database for convenience.
 
 <h2>Database info</h2>
 
-When the user selects menu Database -&gt; Show info, the metadata tab is filled with information about the database connection:
+When the user selects menu Database &raquo; Show info, the metadata tab is filled with information about the database connection:
 host computer name, current user (role), user's privileges and server version. If the PostGIS support is installed for
 the database, it will also show information about version of PostGIS and its support libraries.
+<p>
+There may be also a warning stating there's a mismatch of versions of PostGIS scripts. This might be a result of
+incorrect upgrade of PostGIS: when installing a newer version, you should also re-run the initialization scripts for
+every database on the PostgreSQL server that has PostGIS support enabled. The scripts are in lwpostgis.sql and spatial_ref_sys.sql
+files, located in the PostGIS installation directory (depends on the platform).
 
 <h2>Management of schemas</h2>
 
-TODO
+When clicked a schema, some basic information about the schema is shown: number of tables, owner and permissions of the current user.
+<p>
+It's possible to change schema's name by either clicking schema's name once more when selected or by pressing <tt>F2</tt>.
+When renaming schemas in spatial database, the <tt>geometry_columns</tt> table is altered too to reflect the change in schema's name.
+<p>
+In Schema menu it's possible to create a new schema and to delete an existing schema. The schema for deletion must be empty.
 
 <h2>Management of tables</h2>
 
-TODO
+Whenever a table is selected in the database view, the central view is updated with data from the table.
 
-<h2>Data import</h2>
+Double clicking table name in database view, clicking Edit table action in toolbar or Table menu, opens table properties dialog.
+The dialog comprises of three tabs: Columns, Constraints and Indexes - each of them containing a list and some actions.
+<p>
 
-TODO
+<div style="margin:10px">
+<img src="table_edit.png" alt="Table properties dialog" style="margin-bottom:5px">
+<br>
+<i>Table properties dialog</i>
+</div>
 
-<h2>Data export</h2>
+<p>
+You can do following operations with tables:
+<ul>
+<li>Add column - a new dialog is opened with new options for new field, it is appended to the table after accepting the dialog 
+<li>Add geometry column - to add spatial information to the table. In a new dialog it's possible to select name, geometry type,
+   number of dimensions and spatial reference ID. <tt>AddGeometryColumn</tt> function is used for creation of the column
+<li>Edit column - opens column properties (identical to add column dialog) and allows to modify one or more column settings
+<li>Delete column - drops the selected column, in case of a spatial column uses <tt>DropGeometryColumn</tt> function
+<li>Add constraint - in a dialog allows to specify constraint type and the column on which the constraint will be applied. Currently
+    supporting only creation of primary keys and uniques on one column
+<li>Delete constraint
+<li>Add index - opens a dialog for creation of index. The user is able to specify the column and index name
+<li>Add spatial index - goes through the geometry columns and asks whether to create spatial index
+<li>Delete index
+</ul>
+
+<p>
+
+It's possible to create new tables in a simple table creation dialog. You can open it by clicking Create table action in toolbar
+or doing the same in the Table menu. The dialog aims for simplicity and offers only basic options: schema, table name, list
+of columns with their types, column which will be used as a primary key. In case user's going to create a spatial table, it's
+possibly to specify geometry column name and type, optionally to create a spatial index.
+
+<p>
+
+There are also several more operations available in the Table menu:
+<ul>
+<li>Run VACUUM ANALYZE - in case your database server doesn't use autovacuum functionality, you should run this command manually
+as a part of maintenance. Failing to do so will result in suboptimal queries and bad usage of space with frequently modified tables
+<li>Move to a different schema - also updates <tt>geometry_columns</tt> table when used with spatial tables
+<li>Emtpy table - deletes all rows within the selected table
+<li>Delete table/view
+</ul>
+
+<h2>Data Import</h2>
+
+<h3>Load data from shapefile</h3>
+
+Clicking menu Data &raquo; Load data from shapefile will open a dialog for import of shapefiles into the database
+as spatial tables.
+The dialog acts as a simple frontend for the <tt>shp2pgsql</tt> command line utility from PostGIS. See <a href="http://postgis.refractions.net/documentation/manual-1.3/ch04.html#id2571948">Using the loader</a> section
+from the PostGIS manual for more information.
+
+<p>
+
+There are several available import actions: only create table, only insert rows or both creation of table and insertion of rows.
+The tool supports several options, most of them can be set within the dialog. Finally, the resulting SQL commands can be
+either stored in a text file or directly applied in the current database connection.
+<p>
+<b>Note:</b> not having PostGIS installed on your local machine or being installed in some non-standard location will
+render this feature unusable because of the missing <tt>shp2pgsql</tt> tool.
+
+<h3>DBF Import</h3>
+
+For those willing to import some tables without geometries into the database, there's import wizard. Although
+currently supports only import from DBF files, it might eventually get support for more formats. The first step
+is to select input file and encoding. In the second step, one can see how the table will look like and optionally
+do some modifications to the table. Clicking Finish button the file gets imported into the database and the wizard
+is closed.
+
+<h2>Data Export</h2>
 
 TODO
 
