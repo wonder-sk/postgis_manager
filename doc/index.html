@@ -43,18 +43,18 @@ recognize in the world have some location: a restaurant can be defined by a poin
 as a line with several segments and border of a forest can be represented as a polygon. This means that
 we can extend our tables (containing restaurants, roads, forests or anything else) with another column
 which will specify object's location. PostGIS implements adds a new <tt>geometry</tt> type that stores
-the spatial information. Once such table contains such column, be call it spatial table or geotable.
-<p>
-There are many reasons why one would want to add spatial information to objects. It's possible to select
-data by specifying a location (all restaurants along some road). TODO
+the spatial information. Once such table contains such column, we call it spatial table or geotable.
 <p>
 When working with a large set of data (think millions of rows), it's necessary to access the data effectively.
 Relational databases use indexes on columns to achieve better performance of queries. Traditional indexes
 however can't be used for the spatial data because they're two (or even more) dimensional. PostGIS comes
 with a spatial index (R-tree, as opposed to B-tree used for traditional indexes).
 <p>
-TODO:
-1 table = 1 layer
+GIS software typically organizes data into layers: one layer is a set of objects with common properties,
+e.g. roads, railroads, rivers or cities. In relational databases one layer is represented with a table where one 
+row represents one object: geometry column determines the position and the rest of the columns are object's attributes.
+<p>
+
 
 <h2>Database view</h2>
 
@@ -87,14 +87,33 @@ tables in public schema can be accessed just by their name and not necessarily w
 
 <h2>Central view</h2>
 
-The central part consists of three tabs for inspection of the table metadata and their contents:
+The central part consists of three tabs for inspection of the table metadata and their contents.
+
+<h3>Metadata tab</h3>
+
+Displays basic information about the table:
 <ul>
-<li><b>Metadata tab</b> displays basic information about the table: row count, privileges, owner, detailed list of fields (columns),
-constraints (primary and foreign keys, unique columns, checks), list of indexes, triggers and rules. For spatial tables
-it adds a section about geometry type, dimension, spatial reference and extent. TODO
-<li><b>Table tab</b> shows contents of the table in typical tabular form. Geometry columns are excluded from the view. The table is read-only.
-<li><b>Preview tab</b> is available only for spatial tables and displays a simple map from the table contents.
+<li> table name
+<li> row count
+<li> owner
+<li> user's privileges
+<li> detailed list of columns with their name, type and length
+<li> constraints (primary and foreign keys, unique columns, checks) with thier definitions
+<li> list of indexes
+<li> list of triggers and rules with possibility to enable/disable or delete them
 </ul>
+<p>
+For spatial tables it adds a section about geometry type, number of dimensions, coordinate reference system and layer's extent.
+<p>
+This tab is used also used to show schema and database information.
+
+<h3>Table tab</h3>
+
+Shows contents of the table in a table. Geometry columns are excluded from the view. The table is read-only.
+
+<h3>Preview tab</h3>
+
+Available only for spatial tables. Displays a simple map from the objects' geometries.
 
 <h2>Database connections</h2>
 
@@ -178,7 +197,7 @@ as a part of maintenance. Failing to do so will result in suboptimal queries and
 
 Clicking menu Data &raquo; Load data from shapefile will open a dialog for import of shapefiles into the database
 as spatial tables.
-The dialog acts as a simple frontend for the <tt>shp2pgsql</tt> command line utility from PostGIS. See <a href="http://postgis.refractions.net/documentation/manual-1.3/ch04.html#id2571948">Using the loader</a> section
+The dialog acts as a simple frontend for the <tt>shp2pgsql</tt> command line utility from PostGIS. See <a href="http://postgis.refractions.net/documentation/manual-1.3/ch04.html#id2571948">Using the Loader</a> section
 from the PostGIS manual for more information.
 
 <p>
@@ -200,7 +219,14 @@ is closed.
 
 <h2>Data Export</h2>
 
-TODO
+There's a possibility to export spatial tables into shapefiles: use Dump data to shapefile (in Data menu).
+Similarly to the Load data from shapefile, this is a frontend to <tt>pgsql2shp</tt> utility from PostGIS. See
+<a href="http://postgis.refractions.net/documentation/manual-1.3/ch04.html#id2572357">Using the Dumper</a> section
+from the PostGIS manual for more information.
+<p>
+A dialog will pop up where the user can set the source table to be used for import and the output shapefile.
+The resulting shapefile will be generated after clicking the Dump button.
+
 
 <h2>Advanced features</h2>
 
@@ -251,8 +277,6 @@ It's recommended to read
 as the table versioning feature is heavily based on it. Another good source of information (for those understanding German) is
 <a href="http://gis.hsr.ch/wiki/images/4/44/Postgis_historisierung.pdf">Historisierung von Tabellen in PostGIS</a> [PDF]
 which discusses the topic more in context of GIS application and gives examples of the implementation.
-<p>
-TODO
 
 </div>
 </body>
