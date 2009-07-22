@@ -284,11 +284,11 @@ class DlgCreateTable(QDialog, Ui_DlgCreateTable):
 			try:
 				self.db.create_table(table, flds, pkey, schema)
 				if useGeomColumn:
-					self.db.add_geometry_column(table, geomType, schema, geomColumn)
+					self.db.add_geometry_column(table, geomType, schema, geomColumn, geomSrid, geomDim)
 					# commit data definition changes, otherwise index can't be built
 					self.db.con.commit()
 					if useSpatialIndex:
-						self.db.create_spatial_index(table, schema, geomColumn, geomSrid, geomDim)
+						self.db.create_spatial_index(table, schema, geomColumn)
 				self.emit(SIGNAL("databaseChanged()"))
 			except postgis_utils.DbError, e:
 				DlgDbError.showError(e, self)

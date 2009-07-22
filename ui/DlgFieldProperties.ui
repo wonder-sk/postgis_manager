@@ -1,7 +1,8 @@
-<ui version="4.0" >
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
  <class>DlgFieldProperties</class>
- <widget class="QDialog" name="DlgFieldProperties" >
-  <property name="geometry" >
+ <widget class="QDialog" name="DlgFieldProperties">
+  <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
@@ -9,79 +10,82 @@
     <height>247</height>
    </rect>
   </property>
-  <property name="windowTitle" >
+  <property name="windowTitle">
    <string>Field properties</string>
   </property>
-  <layout class="QVBoxLayout" >
+  <layout class="QVBoxLayout">
    <item>
-    <layout class="QGridLayout" >
-     <item row="0" column="0" >
-      <widget class="QLabel" name="label" >
-       <property name="text" >
+    <layout class="QGridLayout">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label">
+       <property name="text">
         <string>Name</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="1" >
-      <widget class="QLineEdit" name="editName" />
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="editName"/>
      </item>
-     <item row="1" column="0" >
-      <widget class="QLabel" name="label_2" >
-       <property name="text" >
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
         <string>Type</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="1" >
-      <widget class="QComboBox" name="cboType" >
-       <property name="editable" >
+     <item row="1" column="1">
+      <widget class="QComboBox" name="cboType">
+       <property name="editable">
         <bool>true</bool>
        </property>
       </widget>
      </item>
-     <item row="3" column="0" >
-      <widget class="QLabel" name="label_3" >
-       <property name="text" >
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
         <string>Can be NULL</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="1" >
-      <widget class="QCheckBox" name="chkNull" >
-       <property name="text" >
+     <item row="3" column="1">
+      <widget class="QCheckBox" name="chkNull">
+       <property name="text">
         <string/>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
-     <item row="4" column="0" >
-      <widget class="QLabel" name="label_4" >
-       <property name="text" >
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
         <string>Default value</string>
        </property>
       </widget>
      </item>
-     <item row="4" column="1" >
-      <widget class="QLineEdit" name="editDefault" />
+     <item row="4" column="1">
+      <widget class="QLineEdit" name="editDefault"/>
      </item>
-     <item row="2" column="0" >
-      <widget class="QLabel" name="label_5" >
-       <property name="text" >
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
         <string>Length</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="1" >
-      <widget class="QLineEdit" name="editLength" />
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="editLength"/>
      </item>
     </layout>
    </item>
    <item>
-    <widget class="QDialogButtonBox" name="buttonBox" >
-     <property name="orientation" >
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
-     <property name="standardButtons" >
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::NoButton|QDialogButtonBox::Ok</set>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>
     </widget>
    </item>
@@ -103,11 +107,11 @@
    <receiver>DlgFieldProperties</receiver>
    <slot>reject()</slot>
    <hints>
-    <hint type="sourcelabel" >
+    <hint type="sourcelabel">
      <x>316</x>
      <y>260</y>
     </hint>
-    <hint type="destinationlabel" >
+    <hint type="destinationlabel">
      <x>286</x>
      <y>274</y>
     </hint>
