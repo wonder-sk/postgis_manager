@@ -70,7 +70,9 @@ class ManagerWindow(QMainWindow):
 		# but first let the manager chance to show the window
 		QTimer.singleShot(50, self.dbConnectInit)
 		
-	
+		self.dirtyMetadata=False
+		self.dirtyTable=False
+		self.dirtyMap=False
 	def closeEvent(self, e):
 		""" save window state """
 		settings = QSettings()
