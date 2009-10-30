@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from ui.DlgGeomProcessing_ui import Ui_DlgGeomProcessing
 from DlgDbError import DlgDbError
@@ -97,6 +98,7 @@ class DlgGeomProcessing(QDialog, Ui_DlgGeomProcessing):
 			QApplication.restoreOverrideCursor()
 			
 			DlgDbError.showError(e, self)
+			return
 
 		QMessageBox.information(self, "good", "Everything went fine.")
 		self.accept()

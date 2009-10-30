@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from ui.DlgSqlWindow_ui import Ui_DlgSqlWindow
 from DlgDbError import DlgDbError
@@ -83,6 +84,9 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 
 	def executeSql(self):
 		
+		if self.editSql.toPlainText().isEmpty():
+			return
+
 		txt = unicode(self.editSql.toPlainText())
 		
 		QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
@@ -95,6 +99,9 @@ class DlgSqlWindow(QDialog, Ui_DlgSqlWindow):
 			secs = t.elapsed() / 1000.0
 			
 			self.viewResult.setModel( SqlTableModel(c, self.viewResult) )
+			
+			# commit before closing the cursor to make sure that the changes are stored
+			self.db.con.commit()
 			c.close()
 			
 			self.lblResult.setText("%d rows, %.1f seconds" % (c.rowcount, secs))

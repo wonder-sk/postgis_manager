@@ -1,0 +1,15 @@
+PostGIS Manager - NEWS
+----------------------
+
+v0.5.4  ** 30.10.2009
+
+- added "Refresh" action (to Database menu and toolbar), shortcut F5
+- added "SQL window" action to toolbar, shortcut F2
+- store last shapefile and sql paths for load/dump data dialogs
+- do commit automatically when executing commands in SQL window
+- preview table displays also geometry columns (showing just geometry type)
+- fixed a bunch of bugs
+  (thanks to Ivan Mincik for providing patches for some of them)
+
+
+(history for the older versions could be recovered from SVN, but who cares?)

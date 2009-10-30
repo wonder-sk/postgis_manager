@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 PostGIS Manager
 
@@ -197,7 +198,10 @@ class GeoDB:
 		c = self.con.cursor()
 		sql = "SELECT oid, nspname, pg_get_userbyid(nspowner), nspacl FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname != 'information_schema'"
 		self._exec_sql(c, sql)
-		return c.fetchall()
+
+		schema_cmp = lambda x,y: -1 if x[1] < y[1] else 1
+		
+		return sorted(c.fetchall(), cmp=schema_cmp)
 			
 	def list_geotables(self, schema=None):
 		"""
@@ -583,7 +587,7 @@ class GeoDB:
 	def table_apply_function(self, schema, table, res_column, fct, param):
 		""" apply a function to a column and save the result in other column """
 		table = self._table_name(schema, table)
-		sql = "UPDATE %s SET %s = %s(%s)" % (table, res_column, fct, param)
+		sql = "UPDATE %s SET %s = %s(%s)" % (table, self._quote(res_column), fct, self._quote(param))
 		self._exec_sql_and_commit(sql)
 		
 	def table_enable_triggers(self, table, schema, enable=True):

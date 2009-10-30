@@ -4,11 +4,9 @@
 - geometry_columns validity check (add spatial table into the geom_columns table)
 - use QtSql instead of psycopg ?
 
-- check whether pgsql2shp and shp2pgsql tools exist
+- check whether pgsql2shp and shp2pgsql tools exist (qgis ticket #1911)
 
 - allow cancel rendering with ESC
-
-- toolbar buttons: refresh, sql window
 
 - versioning: partial indexes, optionally store last user
 
@@ -16,12 +14,12 @@
 
 - no vacuum analyze for views
 - cache contents of DB between sessions?
-- (postgres provider) force a column to be used for IDs
 - support for tables with OIDs
 - table,column comments
-- sort schemas everywhere (combo boxes, menu etc.)
-- store paths in load data from shapefile dialog
 - allow multiple shapefiles for loading
-- refresh database view after load of shapefile
 - reload layer in qgis if modified in the plugin ?
 - column length definition - error if the type doesn't support modifiers
+- view and edit privileges of other users for tables and schemas
+- allow setting owner for new table
+- allow sorting of preview table
+- allow reserved words as identifiers

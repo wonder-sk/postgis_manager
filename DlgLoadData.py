@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from ui.DlgLoadData_ui import Ui_DlgLoadData
 from DlgDbError import DlgDbError
@@ -49,7 +50,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		for schema in schemas:
 			self.cboSchema.addItem(schema[1])
 			
-	def populateTables(self):
+	def populateTables(self, editText=None):
 		
 		if not self.db:
 			return
@@ -59,7 +60,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		self.cboTable.clear()
 		for table in tables:
 			self.cboTable.addItem(table[0])
-		self.cboTable.setEditText(QString())
+		self.cboTable.setEditText(QString() if not editText else editText)
 	
 	def populateEncodings(self):
 		encodings = ['ISO-8859-1', 'ISO-8859-2', 'UTF-8', 'CP1250']
@@ -134,6 +135,8 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		args.append(table)
 		
 		print args
+
+		QApplication.setOverrideCursor(Qt.WaitCursor)
 		
 		if self.radExec.isChecked():
 			out = subprocess.PIPE
@@ -161,6 +164,8 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 					
 				# commit!
 				self.db.con.commit()
+
+				self.emit(SIGNAL("dbChanged()"))
 			else:
 				# just wait until it finishes
 				p.wait()
@@ -168,11 +173,19 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 				out.close()
 			
 		except OSError, e:
+			QApplication.restoreOverrideCursor()
 			QMessageBox.critical(self, "OSError", "Message: %s\nFilename: %s" % (e.message, e.filename))
 			return
 		except DbError, e:
+			QApplication.restoreOverrideCursor()
 			DlgDbError.showError(e, self)
 			return
+		except UnicodeDecodeError, e:
+			QApplication.restoreOverrideCursor()
+			QMessageBox.critical(self, "Encoding error", "Encoding mismatch. Please choose correct encoding of the data.")
+			return
+
+		QApplication.restoreOverrideCursor()
 		
 		# check whether it has run without errors
 		if p.returncode != 0:
@@ -182,22 +195,38 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		
 		QMessageBox.information(self, "Good", "Everything went fine")
 
+		# repopulate the table list (and preserve current table name)
+		self.populateTables( self.cboTable.currentText() )
+
 
 	def onSelectShapefile(self):
-		fileName = QFileDialog.getOpenFileName(self, "Open Shapefile", QString(), "Shapefiles (*.shp)")
+		settings = QSettings()
+		shpPath = settings.value("/PostGIS_Manager/shp_path").toString()
+
+		fileName = QFileDialog.getOpenFileName(self, "Open Shapefile", shpPath, "Shapefiles (*.shp)")
 		if fileName.isNull():
 			return
 		self.editShapefile.setText(fileName)
 		# use default name for table
 		fi = QFileInfo(fileName)
 		self.cboTable.setEditText(fi.baseName())
+
+		# save shapefile path
+		shpPath = QFileInfo(fileName).absolutePath()
+		settings.setValue("/PostGIS_Manager/shp_path", QVariant(shpPath))
 	
 	def onSelectOutputFile(self):
-		fileName = QFileDialog.getSaveFileName(self, "Save SQL as", QString(), "SQL files (*.sql);;All files (*.*)")
+		settings = QSettings()
+		sqlPath = settings.value("/PostGIS_Manager/sql_path").toString()
+
+		fileName = QFileDialog.getSaveFileName(self, "Save SQL as", sqlPath, "SQL files (*.sql);;All files (*.*)")
 		if fileName.isNull():
 			return
 		self.editOutputFile.setText(fileName)
 		
+		# save sql path
+		sqlPath = QFileInfo(fileName).absolutePath()
+		settings.setValue("/PostGIS_Manager/sql_path", QVariant(sqlPath))
 
 
 if __name__ == '__main__':

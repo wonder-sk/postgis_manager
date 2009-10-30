@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from ui.DlgCreateTable_ui import Ui_DlgCreateTable
 from DlgFieldProperties import DlgFieldProperties
@@ -14,7 +15,7 @@ class TableFieldsDelegate(QItemDelegate):
 	fieldTypes = ["integer", "bigint", "smallint", # integers
 	              "serial", "bigserial", # auto-incrementing ints
 								"real", "double precision", "numeric", # floats
-								"varchar(n)", "char(n)", "text", # strings
+								"varchar", "varchar(n)", "char(n)", "text", # strings
 								"date", "time", "timestamp"] # date/time
 	
 	def __init__(self, parent=None):

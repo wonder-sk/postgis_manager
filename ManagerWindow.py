@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -242,7 +243,7 @@ class ManagerWindow(QMainWindow):
 		model.reset()
 		
 		# only expand when there are not too many tables
-		if model.tree.tableCount < 100:
+		if model.tree.tableCount < 20:
 			self.tree.expandAll()
 		
 		self.currentItem = (None, None)
@@ -544,17 +545,17 @@ class ManagerWindow(QMainWindow):
 		if res != QMessageBox.Yes:
 			return
 		
-		self.db.delete_schema(ptr.name)
-		self.refreshTable()
-		QMessageBox.information(self, "good", "schema deleted.")
-		
+		try:
+			self.db.delete_schema(ptr.name)
+			self.refreshTable()
+			QMessageBox.information(self, "good", "schema deleted.")
+		except postgis_utils.DbError, e:
+			DlgDbError.showError(e, self)		
 		
 	def loadData(self):
 		dlg = DlgLoadData(self, self.db)
-		if not dlg.exec_():
-			return
-		
-		self.refreshTable()
+		self.connect(dlg, SIGNAL("dbChanged()"), self.refreshTable)
+		dlg.exec_()
 
 	def dumpData(self):
 		dlg = DlgDumpData(self, self.db)
@@ -702,8 +703,9 @@ class ManagerWindow(QMainWindow):
 			a.setCheckable(True)
 			self.connect(a, SIGNAL("triggered(bool)"), self.dbConnectSlot)
 		self.menuDb.addSeparator()
+		actionRefresh = self.menuDb.addAction(QIcon(":/icons/toolbar/action_refresh.png"), "&Refresh", self.refreshTable, QKeySequence("F5"))
 		actionDbInfo = self.menuDb.addAction("Show &info", self.dbInfo)
-		actionSqlWindow = self.menuDb.addAction("&SQL window", self.sqlWindow)
+		actionSqlWindow = self.menuDb.addAction(QIcon(":/icons/toolbar/action_sql_window.png"), "&SQL window", self.sqlWindow, QKeySequence("F2"))
 		self.menuDb.addSeparator()
 		self.actionDbDisconnect = self.menuDb.addAction("&Disconnect", self.dbDisconnect)
 		self.actionDbDisconnect.setEnabled(False)
@@ -749,6 +751,9 @@ class ManagerWindow(QMainWindow):
 		self.toolBar = QToolBar(self)
 		self.toolBar.setObjectName("PostGIS_Manager_ToolBar")
 		self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+		self.toolBar.addAction(actionRefresh)
+		self.toolBar.addAction(actionSqlWindow)
+		self.toolBar.addSeparator()
 		self.toolBar.addAction(actionCreateTable)
 		self.toolBar.addAction(actionEditTable)
 		self.toolBar.addAction(actionDeleteTable)
@@ -759,7 +764,7 @@ class ManagerWindow(QMainWindow):
 
 		# database actions - enabled only when we're not connected
 		# (menu "move to schema" actually isn't an action... we're abusing python's duck typing :-)
-		self.dbActions = [ actionDbInfo, actionSqlWindow, actionCreateSchema, actionDeleteSchema,
+		self.dbActions = [ actionDbInfo, actionRefresh, actionSqlWindow, actionCreateSchema, actionDeleteSchema,
 			actionCreateTable, actionEditTable, actionVacuumAnalyze, actionEmptyTable, actionDeleteTable,
 			actionLoadData, actionDumpData, actionImportData, actionExportData, actionGeomProcessing,
 			actionVersioning, self.menuMoveToSchema ]

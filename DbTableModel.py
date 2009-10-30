@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 import postgis_utils
 
+import datetime
 from types import StringType, NoneType
 
 class DbTableModel(QAbstractTableModel):
@@ -18,9 +20,20 @@ class DbTableModel(QAbstractTableModel):
 		# get fields, ignore geometry columns
 		# quote column names to avoid some problems (e.g. columns with upper case)
 		self.fields = []
+		self.fieldNames = []
 		for fld in self.db.get_table_fields(self.table, self.schema):
 			if fld.data_type != "geometry":
-				self.fields.append('"%s"' % fld.name)
+				self.fields.append( self.db._quote(fld.name) )
+			else:
+				self.fields.append('GeometryType("%s")' % fld.name)
+			self.fieldNames.append(fld.name)
+
+		# case for tables with no columns ... any reason to use them? :-)
+		if len(self.fields) == 0:
+			self.row_count = 0
+			self.col_count = 0
+			return
+
 		fields_txt = ", ".join(self.fields)
 		
 		self.row_count = row_count_real #self.db.get_table_rows(self.table, self.schema)
@@ -76,6 +89,8 @@ class DbTableModel(QAbstractTableModel):
 			return QVariant(QString.fromUtf8(val))
 		elif type(val) == NoneType:
 			return QVariant("NULL")
+		elif isinstance(val, datetime.datetime):
+			return QVariant(str(val))
 		else:
 			return QVariant(val)
 		
@@ -88,4 +103,4 @@ class DbTableModel(QAbstractTableModel):
 			return QVariant(section+1)
 		else:
 			# header for a column
-			return QVariant(self.fields[section].strip('"'))
+			return QVariant(self.fieldNames[section])

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from ui.DlgDumpData_ui import Ui_DlgDumpData
 
@@ -51,11 +52,18 @@ class DlgDumpData(QDialog, Ui_DlgDumpData):
 
 
 	def onSelectShapefile(self):
-		fileName = QFileDialog.getSaveFileName(self, "Save as", QString(), "Shapefiles (*.shp)")
+		settings = QSettings()
+		shpPath = settings.value("/PostGIS_Manager/shp_path").toString()
+
+		fileName = QFileDialog.getSaveFileName(self, "Save as", shpPath, "Shapefiles (*.shp)")
 		if fileName.isNull():
 			return
 		self.editShapefile.setText(fileName)
 	
+		# save shapefile path
+		shpPath = QFileInfo(fileName).absolutePath()
+		settings.setValue("/PostGIS_Manager/shp_path", QVariant(shpPath))
+
 	def onDump(self):
 		
 		# sanity checks
@@ -76,7 +84,7 @@ class DlgDumpData(QDialog, Ui_DlgDumpData):
 		if self.db.host:
 			args += ['-h', self.db.host ]
 		if self.db.port:
-			args += ['-p', self.db.port ]
+			args += ['-p', str(self.db.port) ]
 		if self.db.user:
 			args += [ '-u', self.db.user ]
 		if self.db.passwd:

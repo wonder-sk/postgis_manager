@@ -11,6 +11,8 @@
 				<file>icons/toolbar/action_del_table.png</file>
 				<file>icons/toolbar/action_import.png</file>
 				<file>icons/toolbar/action_export.png</file>
+				<file>icons/toolbar/action_refresh.png</file>
+				<file>icons/toolbar/action_sql_window.png</file>
 				
 				<file>icons/layer_point.png</file>
 				<file>icons/layer_line.png</file>

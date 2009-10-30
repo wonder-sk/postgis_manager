@@ -1,29 +1,30 @@
-<ui version="4.0" >
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
  <class>DlgSqlWindow</class>
- <widget class="QDialog" name="DlgSqlWindow" >
-  <property name="geometry" >
+ <widget class="QDialog" name="DlgSqlWindow">
+  <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>385</width>
     <height>471</height>
    </rect>
   </property>
-  <property name="windowTitle" >
+  <property name="windowTitle">
    <string>SQL window</string>
   </property>
-  <layout class="QVBoxLayout" >
+  <layout class="QVBoxLayout">
    <item>
-    <widget class="QLabel" name="label" >
-     <property name="text" >
+    <widget class="QLabel" name="label">
+     <property name="text">
       <string>SQL query:</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QTextEdit" name="editSql" >
-     <property name="sizePolicy" >
-      <sizepolicy vsizetype="Expanding" hsizetype="Expanding" >
+    <widget class="QTextEdit" name="editSql">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
        <horstretch>0</horstretch>
        <verstretch>1</verstretch>
       </sizepolicy>
@@ -31,27 +32,30 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" >
+    <layout class="QHBoxLayout">
      <item>
-      <widget class="QPushButton" name="btnExecute" >
-       <property name="text" >
-        <string>&amp;Execute</string>
+      <widget class="QPushButton" name="btnExecute">
+       <property name="text">
+        <string>&amp;Execute (F5)</string>
+       </property>
+       <property name="shortcut">
+        <string>F5</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="lblResult" >
-       <property name="text" >
+      <widget class="QLabel" name="lblResult">
+       <property name="text">
         <string/>
        </property>
       </widget>
      </item>
      <item>
       <spacer>
-       <property name="orientation" >
+       <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
-       <property name="sizeHint" >
+       <property name="sizeHint" stdset="0">
         <size>
          <width>40</width>
          <height>20</height>
@@ -60,8 +64,8 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="btnClear" >
-       <property name="text" >
+      <widget class="QPushButton" name="btnClear">
+       <property name="text">
         <string>&amp;Clear</string>
        </property>
       </widget>
@@ -69,31 +73,31 @@
     </layout>
    </item>
    <item>
-    <widget class="QLabel" name="label_2" >
-     <property name="text" >
+    <widget class="QLabel" name="label_2">
+     <property name="text">
       <string>Result:</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QTableView" name="viewResult" >
-     <property name="sizePolicy" >
-      <sizepolicy vsizetype="Expanding" hsizetype="Expanding" >
+    <widget class="QTableView" name="viewResult">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
        <horstretch>0</horstretch>
        <verstretch>3</verstretch>
       </sizepolicy>
      </property>
-     <property name="selectionBehavior" >
+     <property name="selectionBehavior">
       <enum>QAbstractItemView::SelectRows</enum>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QDialogButtonBox" name="buttonBox" >
-     <property name="orientation" >
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
-     <property name="standardButtons" >
+     <property name="standardButtons">
       <set>QDialogButtonBox::Close</set>
      </property>
     </widget>

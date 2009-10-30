@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 def name():
 	return "PostGIS manager"
@@ -6,7 +7,7 @@ def description():
 	return "Manage your PostGIS database"
 
 def version():
-	return "Version 0.5.3"
+	return "Version 0.5.4"
 
 def qgisMinimumVersion():
 	return "1.0.0"
