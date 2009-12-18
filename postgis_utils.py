@@ -16,6 +16,8 @@ import psycopg2
 import psycopg2.extensions # for isolation levels
 import re
 
+from postgresql_keywords import keywords
+
 # use unicode!
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 
@@ -101,19 +103,13 @@ class TableField:
 		else:
 			return "NOT NULL"
 		
-	def field_def(self):
+	def field_def(self, db):
 		""" return field definition as used for CREATE TABLE or ALTER TABLE command """
 		data_type = self.data_type if (not self.modifier or self.modifier < 0) else "%s(%d)" % (self.data_type, self.modifier)
-		txt = "%s %s %s" % (self._quote(self.name), data_type, self.is_null_txt())
+		txt = "%s %s %s" % (db._quote(self.name), data_type, self.is_null_txt())
 		if self.default and len(self.default) > 0:
 			txt += " DEFAULT %s" % self.default
 		return txt
-		
-	def _quote(self, ident):
-		if re.match(r"^\w+$", ident) is not None:
-			return ident
-		else:
-			return '"%s"' % ident.replace('"', '""')
 		
 
 class GeoDB:
@@ -434,9 +430,9 @@ class GeoDB:
 		
 		table_name = self._table_name(schema, table)
 		
-		sql = "CREATE TABLE %s (%s" % (table_name, fields[0].field_def())
+		sql = "CREATE TABLE %s (%s" % (table_name, fields[0].field_def(self))
 		for field in fields[1:]:
-			sql += ", %s" % field.field_def()
+			sql += ", %s" % field.field_def(self)
 		if pkey:
 			sql += ", PRIMARY KEY (%s)" % self._quote(pkey)
 		sql += ")"
@@ -505,7 +501,7 @@ class GeoDB:
 	def table_add_column(self, table, field, schema=None):
 		""" add a column to table (passed as TableField instance) """
 		table_name = self._table_name(schema, table)
-		sql = "ALTER TABLE %s ADD %s" % (table_name, field.field_def())
+		sql = "ALTER TABLE %s ADD %s" % (table_name, field.field_def(self))
 		self._exec_sql_and_commit(sql)
 		
 	def table_delete_column(self, table, field, schema=None):
@@ -765,7 +761,7 @@ class GeoDB:
 		""" quote identifier if needed """
 		identifier = unicode(identifier) # make sure it's python unicode string
 		# is it needed to quote the identifier?
-		if self.re_ident_ok.match(identifier) is not None:
+		if self.re_ident_ok.match(identifier) is not None and identifier.lower() not in keywords:
 			return identifier
 		# it's needed - let's quote it (and double the double-quotes)
 		return u'"%s"' % identifier.replace('"', '""')

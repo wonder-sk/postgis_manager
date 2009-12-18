@@ -50,18 +50,19 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		self.cboSchema.clear()
 		for schema in schemas:
 			self.cboSchema.addItem(schema[1])
-			
-	def populateTables(self, editText=None):
+
+	def populateTables(self):
 		
 		if not self.db:
 			return
 		
+		currentText = self.cboTable.currentText()
 		schema = unicode(self.cboSchema.currentText())
 		tables = self.db.list_geotables(schema)
 		self.cboTable.clear()
 		for table in tables:
 			self.cboTable.addItem(table[0])
-		self.cboTable.setEditText(QString() if not editText else editText)
+		self.cboTable.setEditText(currentText)
 	
 	def populateEncodings(self):
 		encodings = ['ISO-8859-1', 'ISO-8859-2', 'UTF-8', 'CP1250']
@@ -123,6 +124,8 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 			args.append('-S')
 		if self.chkSpatialIndex.isChecked():
 			args.append('-I')
+		if self.chkDumpFormat.isChecked():
+			args.append('-D')
 			
 		# shapefile
 		shpfile = unicode(self.editShapefile.text())
@@ -141,6 +144,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		
 		if self.radExec.isChecked():
 			out = subprocess.PIPE
+			#execAtOnce = self.chkDumpFormat.isChecked()
 		else:
 			out = open(self.editOutputFile.text(), 'w')
 			
@@ -173,7 +177,7 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		QMessageBox.information(self, "Good", "Everything went fine")
 
 		# repopulate the table list (and preserve current table name)
-		self.populateTables( self.cboTable.currentText() )
+		self.populateTables()
 
 
 	def onSelectShapefile(self):

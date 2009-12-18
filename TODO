@@ -22,5 +22,5 @@
 - view and edit privileges of other users for tables and schemas
 - allow setting owner for new table
 - allow sorting of preview table
-- allow reserved words as identifiers
-- shp2pgsql: allow "-D" dump format (for large datasets)
+- load data: allow "-D" dump format (for large datasets)
+  - need to use psycopg's copy_from

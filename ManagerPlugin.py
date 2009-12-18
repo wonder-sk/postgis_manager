@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -27,8 +28,8 @@ class ManagerPlugin:
 		self.iface.removePluginMenu("&PostGIS Manager",self.action)
 		self.iface.removeToolBarIcon(self.action)
 	
-	def run(self): 
-		
+	def run(self):
+
 		try:
 			import psycopg2
 		except ImportError, e:

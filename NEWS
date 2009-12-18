@@ -1,6 +1,11 @@
 PostGIS Manager - NEWS
 ----------------------
 
+v0.5.5 ** 12.11.2009
+
+- fixed a gui bug in load data dialog
+- allow reserved words as identifiers
+
 v0.5.4  ** 30.10.2009
 
 - added "Refresh" action (to Database menu and toolbar), shortcut F5
