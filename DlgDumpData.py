@@ -7,7 +7,7 @@ from PyQt4.QtGui import *
 
 import subprocess
 import re
-
+import sys
 
 class DlgDumpData(QDialog, Ui_DlgDumpData):
 
@@ -101,13 +101,20 @@ class DlgDumpData(QDialog, Ui_DlgDumpData):
 		print args
 
 		try:
-			# start shp2pgsql as subprocess
-			p = subprocess.Popen(args=args, stderr=subprocess.PIPE)
+			if sys.platform == 'win32':
+				import os
+				cmdline = subprocess.list2cmdline(args)
+				p = os.popen3(cmdline)
+				
+			else:
 			
-			# TODO: visualize somehow what's going on
+				# start shp2pgsql as subprocess
+				p = subprocess.Popen(args=args, stderr=subprocess.PIPE)
+				
+				# TODO: visualize somehow what's going on
 
-			# just wait until it finishes
-			p.wait()
+				# just wait until it finishes
+				p.wait()
 
 		except OSError, e:
 			QMessageBox.critical(self, "OSError", "Message: %s\nFilename: %s" % (e.message, e.filename))

@@ -8,6 +8,7 @@ from PyQt4.QtGui import *
 
 import subprocess
 import re
+import sys
 
 from postgis_utils import DbError
 
@@ -142,35 +143,12 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 			out = subprocess.PIPE
 		else:
 			out = open(self.editOutputFile.text(), 'w')
-		
-		try:
-			# start shp2pgsql as subprocess
-			p = subprocess.Popen(args=args, stdout=out, stderr=subprocess.PIPE)
 			
-			if out == subprocess.PIPE:
-				# read the output while the process is running
-				data = ''
-				cursor = self.db.con.cursor()
-				newcommand = re.compile(";$", re.MULTILINE)
-				while p.poll() == None:
-					data += p.stdout.read()
-					
-					# split the commands
-					cmds = newcommand.split(data)
-					for cmd in cmds[:-1]:
-						# run SQL commands within current DB connection
-						self.db._exec_sql(cursor, cmd)
-					data = cmds[-1]
-					
-				# commit!
-				self.db.con.commit()
-
-				self.emit(SIGNAL("dbChanged()"))
+		try:
+			if sys.platform == 'win32':
+				res, err = self.load_data_win(out, args)
 			else:
-				# just wait until it finishes
-				p.wait()
-				# close the output file
-				out.close()
+				res, err = self.load_data_posix(out, args)
 			
 		except OSError, e:
 			QApplication.restoreOverrideCursor()
@@ -188,11 +166,10 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		QApplication.restoreOverrideCursor()
 		
 		# check whether it has run without errors
-		if p.returncode != 0:
-			err = p.stderr.readlines()
+		if res == False:
 			QMessageBox.critical(self, "Returned error", "Something's wrong:\n" + str(err))
 			return
-		
+
 		QMessageBox.information(self, "Good", "Everything went fine")
 
 		# repopulate the table list (and preserve current table name)
@@ -227,6 +204,85 @@ class DlgLoadData(QDialog, Ui_DlgLoadData):
 		# save sql path
 		sqlPath = QFileInfo(fileName).absolutePath()
 		settings.setValue("/PostGIS_Manager/sql_path", QVariant(sqlPath))
+
+
+	def load_data_win(self, out, args):
+		""" special windows handling """
+		import os
+		cmdline = subprocess.list2cmdline(args)
+		data = None
+
+		# subprocess.Popen() doesn't work here on windows
+		# it just throws "Bad file decriptor" exception
+		# I think that might be due different C runtime libraries
+		# because it works in python from command line
+
+		# with os.popen3 it's impossible to get error code
+		# and os.Popen3 object isn't present on windows
+		# STUPID!
+		p = os.popen3(cmdline)
+		data = p[1].read()
+		
+		if out == subprocess.PIPE:
+		
+			cursor = self.db.con.cursor()
+			newcommand = re.compile(";$", re.MULTILINE)
+
+			# split the commands
+			cmds = newcommand.split(data)
+			for cmd in cmds[:-1]:
+				# run SQL commands within current DB connection
+				self.db._exec_sql(cursor, cmd)
+			data = cmds[-1]
+			
+			self.db.con.commit()
+
+			self.emit(SIGNAL("dbChanged()"))
+		else:
+			out.write(data)
+			out.close()
+
+		if data is None or len(data) == 0:
+			return (False, p[2].readlines())
+		else:
+			return (True, None)
+
+
+	def load_data_posix(self, out, args):
+
+		# start shp2pgsql as subprocess
+		p = subprocess.Popen(args=args, stdout=out, stderr=subprocess.PIPE)
+		
+		if out == subprocess.PIPE:
+			# read the output while the process is running
+			data = ''
+			cursor = self.db.con.cursor()
+			newcommand = re.compile(";$", re.MULTILINE)
+			while p.poll() == None:
+				data += p.stdout.read()
+				
+				# split the commands
+				cmds = newcommand.split(data)
+				for cmd in cmds[:-1]:
+					# run SQL commands within current DB connection
+					self.db._exec_sql(cursor, cmd)
+				data = cmds[-1]
+				
+			# commit!
+			self.db.con.commit()
+
+			self.emit(SIGNAL("dbChanged()"))
+		else:
+			# just wait until it finishes
+			p.wait()
+			# close the output file
+			out.close()
+			
+		if p.returncode == 0:
+			return (True, None)
+		else:
+			return (False, p.stderr.readlines())
+
 
 
 if __name__ == '__main__':
