@@ -24,3 +24,4 @@
 - allow sorting of preview table
 - load data: allow "-D" dump format (for large datasets)
   - need to use psycopg's copy_from
+- help on windows doesn't open

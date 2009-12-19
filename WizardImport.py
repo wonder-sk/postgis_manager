@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -5,6 +6,7 @@ from PyQt4.QtGui import *
 from qgis.core import QgsVectorLayer, QgsRectangle, QgsFeature
 import postgis_utils
 
+from DlgDbError import DlgDbError
 
 
 class IntroPage(QWizardPage):
@@ -118,7 +120,7 @@ class DetailsPage(QWizardPage):
 		# show columns
 		self.listFields.clear()
 		for fld in self.wizard().dbf_fields:
-			self.listFields.addItem(fld.field_def())
+			self.listFields.addItem(fld.field_def(self.wizard().db))
 			self.cboPrimaryKey.addItem(fld.name)
 		
 	
@@ -147,9 +149,8 @@ class WizardImport(QWizard):
 		
 	def accept(self):
 		
-		QApplication.instance().setOverrideCursor(QCursor(Qt.WaitCursor))
-		self.do_dbf_import()
-		QApplication.instance().restoreOverrideCursor()
+		if not self.do_dbf_import():
+			return
 		
 		QDialog.accept(self)
 		
@@ -157,6 +158,7 @@ class WizardImport(QWizard):
 			
 	def load_dbf(self, filename, encoding):
 		""" try to load DBF file """
+
 		v = QgsVectorLayer(filename, "x", "ogr")
 		if not v.isValid():
 			self.vlayer = None
@@ -194,35 +196,47 @@ class WizardImport(QWizard):
 	def do_dbf_import(self):
 		""" last step: create table and import data """
 		
+		QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+
 		tablename = unicode(self.field("tablename").toString())
 		pkey = unicode(self.field("pkey").toString())
 		if pkey == "(none)": pkey = None
 		
-		# create the table
-		self.db.create_table(tablename, self.dbf_fields, pkey)
-		
-		cursor = self.db.con.cursor()
+		try:
+			# create the table
+			self.db.create_table(tablename, self.dbf_fields, pkey)
 			
-		# now let's get the features and import them to database
-		pr = self.vlayer.dataProvider()
-		flds = pr.fields()
-		pr.enableGeometrylessFeatures(True)
-		pr.select(pr.attributeIndexes(), QgsRectangle(), False) # all attrs, no geometry
-		f = QgsFeature()
-		while pr.nextFeature(f):
-			attrs = f.attributeMap()
-			values = []
-			for (i,val) in attrs.iteritems():
-				vartype = flds[i].type()
-				if val.isNull():
-					values.append("NULL")
-				elif vartype == QVariant.Int:
-					values.append(str(val.toInt()[0]))
-				elif vartype == QVariant.Double:
-					values.append(str(val.toDouble()[0]))
-				else: # string or something else
-					values.append("'%s'" % str(val.toString().toUtf8()).replace("'","''").replace("\\", "\\\\"))
-			self.db.insert_table_row(tablename, values, None, cursor)
+			cursor = self.db.con.cursor()
+				
+			# now let's get the features and import them to database
+			pr = self.vlayer.dataProvider()
+			flds = pr.fields()
+			pr.enableGeometrylessFeatures(True)
+			pr.select(pr.attributeIndexes(), QgsRectangle(), False) # all attrs, no geometry
+			f = QgsFeature()
+			while pr.nextFeature(f):
+				attrs = f.attributeMap()
+				values = []
+				for (i,val) in attrs.iteritems():
+					vartype = flds[i].type()
+					if val.isNull():
+						values.append("NULL")
+					elif vartype == QVariant.Int:
+						values.append(str(val.toInt()[0]))
+					elif vartype == QVariant.Double:
+						values.append(str(val.toDouble()[0]))
+					else: # string or something else
+						values.append("'%s'" % str(val.toString().toUtf8()).replace("'","''").replace("\\", "\\\\"))
+				self.db.insert_table_row(tablename, values, None, cursor)
+				
+			# commit changes to DB
+			self.db.con.commit()
+
+		except postgis_utils.DbError, e:
+			QApplication.restoreOverrideCursor()
 			
-		# commit changes to DB
-		self.db.con.commit()
+			DlgDbError.showError(e, self)
+			return False
+
+		QApplication.restoreOverrideCursor()
+		return True
