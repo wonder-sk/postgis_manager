@@ -18,4 +18,4 @@ clean:
 	rm -f $(GEN_FILES) *.pyc
 
 package:
-	cd .. && rm -f postgis_manager.zip && zip -r postgis_manager.zip postgis_manager -x \*.svn-base -x \*.pyc -x \*entries\*
+	cd .. && rm -f postgis_manager.zip && zip -r postgis_manager.zip postgis_manager -x \*.svn-base -x \*.pyc -x \*entries\* -x \*.git\*
