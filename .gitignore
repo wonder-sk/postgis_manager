@@ -1,0 +1,4 @@
+*.pyc
+ui/*_ui.py
+resources.py
+
