@@ -711,7 +711,7 @@ class GeoDB:
 				IF (TG_OP = 'INSERT') THEN
 					NEW.%(res)s := %(f)s(NEW.%(geom)s);
 				ELSIF (TG_OP = 'UPDATE') THEN
-					IF NEW.%(geom)s != OLD.%(geom)s THEN
+					IF NOT (NEW.%(geom)s ~= OLD.%(geom)s) THEN
 						NEW.%(res)s := %(f)s(NEW.%(geom)s);
 					END IF;
 				END IF;

@@ -1,6 +1,10 @@
 PostGIS Manager - NEWS
 ----------------------
 
+v0.5.8 ** 6.2.2010
+
+- fixed geometry processing trigger function
+
 v0.5.7 ** 19.12.2009
 
 - fixed DBF import and made the wizard behave better on DB errors
