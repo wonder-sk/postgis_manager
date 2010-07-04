@@ -1,6 +1,12 @@
 PostGIS Manager - NEWS
 ----------------------
 
+v0.5.9 ** 4.7.2010
+
+- handle error when creation of schema fails
+- non-modal sql window (Ivan Mincik)
+- don't ask for password if saved - with qgis 1.5 (Giuseppe Sucameli)
+
 v0.5.8 ** 6.2.2010
 
 - fixed geometry processing trigger function

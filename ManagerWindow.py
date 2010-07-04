@@ -129,7 +129,9 @@ class ManagerWindow(QMainWindow):
 		get_value_str = lambda x: unicode(settings.value(x).toString())
 		host, database, username, password = map(get_value_str, ["host", "database", "username", "password"])
 		port = settings.value("port").toInt()[0]
-		if not settings.value("save").toBool():
+		
+		# qgis1.5 use 'savePassword' instead of 'save' setting
+		if not ( settings.value("save").toBool() or settings.value("savePassword").toBool() ):
 			(password, ok) = QInputDialog.getText(self, "Enter password", "Enter password for connection \"%s\":" % selected, QLineEdit.Password)
 			if not ok: return
 		settings.endGroup()
@@ -522,10 +524,13 @@ class ManagerWindow(QMainWindow):
 	def createSchema(self):
 		
 		(name, ok) = QInputDialog.getText(self, "Schema name", "Enter name for new schema")
-		if not name.isEmpty():
-			self.db.create_schema(name)
-			self.refreshTable()
-			QMessageBox.information(self, "good", "schema created.")
+		try:
+			if not name.isEmpty():
+				self.db.create_schema(name)
+				self.refreshTable()
+				QMessageBox.information(self, "good", "schema created.")
+		except postgis_utils.DbError, e:
+			DlgDbError.showError(e, self)
 
 	
 	def deleteSchema(self):
@@ -636,7 +641,7 @@ class ManagerWindow(QMainWindow):
 	def sqlWindow(self):
 		""" show sql window """
 		dlg = DlgSqlWindow(self, self.db)
-		dlg.exec_()
+		dlg.show()
 	
 	def enableGui(self, connected):
 		""" enable / disable various actions depending whether we're connected or not """
