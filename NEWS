@@ -1,6 +1,14 @@
 PostGIS Manager - NEWS
 ----------------------
 
+v0.5.11 ** 30.10.2010
+
+- fix handling of decimal numbers in table, datetime in sql window
+
+v0.5.10 ** 20.10.2010
+
+- fix handling of decimal numbers in sql window
+
 v0.5.9 ** 4.7.2010
 
 - handle error when creation of schema fails

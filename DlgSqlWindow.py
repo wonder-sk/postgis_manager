@@ -9,8 +9,9 @@ from PyQt4.QtGui import *
 import postgis_utils
 import psycopg2
 
+import datetime
 from types import NoneType
-
+from decimal import Decimal
 
 class SqlTableModel(QAbstractTableModel):
 	
@@ -40,6 +41,11 @@ class SqlTableModel(QAbstractTableModel):
 		val = self.resdata[ index.row() ][ index.column() ]
 		if type(val) == NoneType:
 			return QVariant("NULL")
+		elif isinstance(val, Decimal):
+			# make sure to convert special classes (otherwise it is user type in QVariant)
+			return QVariant(float(val))
+		elif isinstance(val, datetime.datetime):
+			return QVariant(str(val))
 		else:
 			return QVariant(val)		
 	

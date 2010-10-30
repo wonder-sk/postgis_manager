@@ -7,6 +7,7 @@ import postgis_utils
 
 import datetime
 from types import StringType, NoneType
+from decimal import Decimal
 
 class DbTableModel(QAbstractTableModel):
 
@@ -89,6 +90,9 @@ class DbTableModel(QAbstractTableModel):
 			return QVariant(QString.fromUtf8(val))
 		elif type(val) == NoneType:
 			return QVariant("NULL")
+		elif isinstance(val, Decimal):
+			# make sure to convert special classes (otherwise it is user type in QVariant)
+			return QVariant(float(val))
 		elif isinstance(val, datetime.datetime):
 			return QVariant(str(val))
 		else:
