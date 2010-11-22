@@ -1,6 +1,10 @@
 PostGIS Manager - NEWS
 ----------------------
 
+v0.5.12 ** 22.11.2010
+
+- put the plugin into Database menu - QGIS >= 1.7 (Giuseppe Sucameli)
+
 v0.5.11 ** 30.10.2010
 
 - fix handling of decimal numbers in table, datetime in sql window
