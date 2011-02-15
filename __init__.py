@@ -8,7 +8,7 @@ def description():
 	return "Manage your PostGIS database"
 
 def version():
-	return "Version 0.5.13"
+	return "Version 0.5.14"
 
 def icon():
 	return "icons/postgis_elephant.png"

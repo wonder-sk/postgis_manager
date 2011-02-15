@@ -20,17 +20,17 @@ class ManagerPlugin:
 	
 		# Add toolbar button and menu item
 		self.iface.addToolBarIcon(self.action)
-		try:
+		if hasattr(self.iface, "addPluginToDatabaseMenu"):
 			self.iface.addPluginToDatabaseMenu("&PostGIS Manager", self.action)
-		except AttributeError:
+		else:
 			self.iface.addPluginToMenu("&PostGIS Manager", self.action)
 		
 	
 	def unload(self):
 		# Remove the plugin menu item and icon
-		try:
+		if hasattr(self.iface, "removePluginDatabaseMenu"):
 			self.iface.removePluginDatabaseMenu("&PostGIS Manager", self.action)
-		except AttributeError:
+		else:
 			self.iface.removePluginMenu("&PostGIS Manager",self.action)
 		self.iface.removeToolBarIcon(self.action)
 	

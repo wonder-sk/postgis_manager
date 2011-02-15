@@ -1,6 +1,10 @@
 PostGIS Manager - NEWS
 ----------------------
 
+v0.5.14 ** 15.2.2011
+
+- fixed Database menu with QGIS versions < 1.7
+
 v0.5.13 ** 25.12.2010
 
 - added icon
