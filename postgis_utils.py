@@ -684,12 +684,12 @@ class GeoDB:
 		 if a cursor is specified, it doesn't commit (expecting that there will be more inserts)
 		 otherwise it commits immediately """
 		t = self._table_name(schema, table)
-		sql = ""
+		sql = u""
 		for value in values:
 			# TODO: quote values?
-			if sql: sql += ", "
-			sql += value
-		sql = "INSERT INTO %s VALUES (%s)" % (t, sql)
+			if sql: sql += u", "
+			sql += unicode(value, 'utf-8')
+		sql = u"INSERT INTO %s VALUES (%s)" % (t, sql)
 		if cursor:
 			self._exec_sql(cursor, sql)
 		else:
