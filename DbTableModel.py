@@ -92,7 +92,7 @@ class DbTableModel(QAbstractTableModel):
 			return QVariant("NULL")
 		elif isinstance(val, Decimal):
 			# make sure to convert special classes (otherwise it is user type in QVariant)
-			return QVariant(float(val))
+			return QVariant(str(val))
 		elif isinstance(val, datetime.datetime):
 			return QVariant(str(val))
 		else:
