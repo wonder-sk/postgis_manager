@@ -1,6 +1,11 @@
 PostGIS Manager - NEWS
 ----------------------
 
+v0.5.15 ** 5.7.2011
+
+- handle import of unicode text correctly
+- better handle display of floating point numbers
+
 v0.5.14 ** 15.2.2011
 
 - fixed Database menu with QGIS versions < 1.7
